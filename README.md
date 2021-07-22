@@ -1,2 +1,2 @@
 # PSP
-protein structure prediction
+protein structure prediction on supercomputers
