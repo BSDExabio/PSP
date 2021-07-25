@@ -1,12 +1,11 @@
 # JAX on Summit
 
-The purpose of this is to track the WIP JAX build on Summit. i
+The purpose of this is to track the WIP JAX build on Summit.
 
 JAX uses Bazel for its build system. This directory contains:
 
 * How we built Bazel on Summit (Bazel is required to build JAX)
 * Toolchain changes to Bazel (enables the ability to  use Summit compiler modules)
-* Current issues with building JAX on Summit
 * List of issues we have opened with other projects
 
 Open Jax issue: https://github.com/google/jax/issues/4493
