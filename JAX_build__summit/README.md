@@ -24,7 +24,6 @@ The below is useful knowledge. It has been seen to help with building Bazel itse
 
 ```
 $ cat ~/.bazelrc 
-startup --output_user_root=/gpfs/alpine/<your_path>  # anywhere on gpfs is good; default is in /tmp which eats cgroup mem limit
 build --jobs 2 --local_ram_resources=HOST_RAM*0.04 # throttles Bazels resource usage. Has been seen to help with JAX build.
 test --jobs 2
 ```
