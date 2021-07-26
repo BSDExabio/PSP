@@ -106,3 +106,5 @@ python build/build.py --bazel_path=/gpfs/alpine/stf007/scratch/rprout/bazel-4.1.
   * update `cc_toolchain_config.bzl` (both `tool_paths` and `inclusions`)
     * I have them commented out in the `cc_toolchain_config.bzl` link above.   
   * Clean the Bazel environment. Run the `--expunge` command and remove bazel-[cache/tmp], as noted above. 
+* Build log: https://gist.github.com/proutrc/d4bc637555d3624d8aa4ccf6a65f348f (`undeclared inclusion(s)` is back!. Seemingly further along.)
+   * NOTE: I have played with adding realpath and the linked path to the toolchain config (both at same time even). 
