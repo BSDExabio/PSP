@@ -71,6 +71,11 @@ test --jobs 2
 ```
 build --disk_cache=/gpfs/alpine/stf007/scratch/rprout/bazel-cache/
 ```
+* It also appears useful to set this in ~/.bazelrc (otherwise you may get warnings about "output base on NFS"):
+```
+startup --output_user_root=/gpfs/alpine/stf007/scratch/rprout/bazel-build-cache/user-root
+``
+
 NOTE: These `~/.bazelrc` options get inheritied at build time.
 ### Running build
 
