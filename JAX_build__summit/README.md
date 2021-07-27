@@ -108,3 +108,14 @@ python build/build.py --bazel_path=/gpfs/alpine/stf007/scratch/rprout/bazel-4.1.
   * Clean the Bazel environment. Run the `--expunge` command and remove bazel-[cache/tmp], as noted above. 
 * Build log: https://gist.github.com/proutrc/d4bc637555d3624d8aa4ccf6a65f348f (`undeclared inclusion(s)` is back!. Seemingly further along.)
    * NOTE: I have played with adding realpath and the linked path to the toolchain config (both at same time even). 
+
+## Tensorflow patch needed
+
+TF was not getting the compiler header files from our custom toolchain. 
+
+See here: https://github.com/tensorflow/tensorflow/issues/33975 
+Patch referenced in above: https://github.com/easybuilders/easybuild-easyconfigs/blob/develop/easybuild/easyconfigs/t/TensorFlow/TensorFlow-2.1.0_fix-cuda-build.patch 
+
+The file is in `bazel-jax/external/org_tensorflow/third_party/gpus/cuda_configure.bzl` which is in the build-cache (which we get from `startup --output_user_root=/gpfs/alpine/stf007/scratch/rprout/bazel-build-cache/user-root`). 
+
+Without this patch TF only works with compilers from `/usr/bin.`
