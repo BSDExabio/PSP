@@ -1,5 +1,7 @@
 # JAX on Summit
 
+## Note: All of the below outlines the struggles for building JAX directly on Summit. This is mainly due to an older default, system, GCC in /usr/bin on Summit (it is hard to get the JAX build system, Bazel, to use non-standard locations of GCC, from Summit modules). We have been able to succesfully build a subset of the full AlphaFold container on a Raptor machine (isolated Power9 machine some of us have access to), which includes JAX though. We then transfered and ran the container on Peak, using Singularity the Singularity runttime. The conatiner does not currently run on Summit, due to old Nvidia drivers on Summit, but it should after Summit's upgrade coming up. 
+
 The purpose of this is to track the WIP JAX build on Summit.
 
 JAX uses Bazel for its build system. This directory contains:
