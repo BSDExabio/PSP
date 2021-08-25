@@ -1,0 +1,54 @@
+# ignore these files
+*.sw[po]
+.idea
+local/
+
+#Developer specific project files
+/tmp.*
+*.log
+*.pyc
+__pycache__
+
+build/
+
+#Subversion
+.svn
+
+# .bak files
+*.bak
+
+#Mac OS
+.DS_Store
+__MACOSX
+
+#Intellij
+.idea/
+.idea/workspace.xml
+.idea/libraries
+.idea/kotlinc.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/scopes
+.idea/artifacts
+.idea/uiDesigner.xml
+.idea/dataSources.local.xml
+.idea/dataSources.local.xml
+.idea/dataSources.ids
+.idea/dataSources.xml
+.idea/dataSources
+.idea/kotlinc.xml
+.idea/sonar*
+*.iws
+*.iml
+.idea/compiler.xml
+.idea/kotlinc.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/misc.xml
+.idea/modules.xml
+
+
+#vscode
+.vscode
+
+# ignore any virtual environments
+venv/
