@@ -2,3 +2,4 @@
 alphafold_databases/params/*.npz filter=lfs diff=lfs merge=lfs -text
 alphafold_databases/params/params_model_2_ptm.npz filter=lfs diff=lfs merge=lfs -text
 alphafold_databases/params/params_model_3_ptm.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_4_ptm.npz filter=lfs diff=lfs merge=lfs -text
