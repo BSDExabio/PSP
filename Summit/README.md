@@ -14,11 +14,11 @@ It is built for CUDA11.
 
 ## The setup
 
-- alphafold: Contains alphafold codebase, in addtion to our own scripts.  
-- alphafold_databases: Ccontains parameters for the run. Also contains database tar. 
-- casp14: Contains casp14 list file and reduced database for testing.
-- desulfovibrio: A larger set of 559 sequences in the listi file.
-- run: Contains run scripts. 
+- `alphafold`: Contains alphafold codebase, in addtion to our own scripts.  
+- `alphafold_databases/params`: Contains parameters for the models. 
+- `casp14`: Contains casp14 list file and reduced database for testing (to be added still).
+- `desulfovibrio:` A larger set of 559 sequences in the list file (to be added still).
+- `run:` Contains run scripts. 
 
 
 ## How to do a test run within an interactive job
