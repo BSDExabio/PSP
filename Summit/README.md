@@ -16,8 +16,8 @@ It is built for CUDA11.
 
 - `alphafold`: Contains alphafold codebase, in addtion to our own scripts.  
 - `alphafold_databases/params`: Contains parameters for the models. 
-- `casp14`: Contains casp14 list file and reduced database for testing (to be added still).
-- `desulfovibrio:` A larger set of 559 sequences in the list file (to be added still).
+- `casp14`: Contains casp14 list file and reduced database for testing (on GPFS).
+- `desulfovibrio:` A larger set of 559 sequences in the list file (on GPFS).
 - `run:` Contains run scripts. 
 
 
@@ -25,7 +25,9 @@ It is built for CUDA11.
 
 - Clone this directory.
 - Make necessary changes to run/run_af_stage2a_batch_summit.sh (change directory base to represent your setup).
-- example jsrun command:`jsrun -n1 -g6 singularity exec --bind /gpfs/alpine:/gpfs/alpine --nv /gpfs/alpine/stf007/scratch/rprout/AlphaFold/alphafold1103.sif ./run_af_stage2a_batch_summit.sh /gpfs/alpine/stf007/scratch/rprout/AlphaFold/runs/casp14_fm.lst /gpfs/alpine/stf007/scratch/rprout/AlphaFold/test-output` 
+- example jsrun command:
+
+```jsrun -n1 -g6 singularity exec --bind /gpfs/alpine:/gpfs/alpine --nv /gpfs/alpine/stf007/scratch/rprout/AlphaFold/alphafold1103.sif ./run_af_stage2a_batch_summit.sh /gpfs/alpine/stf007/scratch/rprout/AlphaFold/runs/casp14_fm.lst /gpfs/alpine/stf007/scratch/rprout/AlphaFold/test-output``` 
 
 NOTE: You need to provide target list file and output directory to the run script
 
