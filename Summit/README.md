@@ -8,7 +8,7 @@ This folder provides a way to get started on Summit. We currently only run the D
 
 We built the container on an ORNL Raptor machine, which is also Power9. The container build mechanism was Podman. We then converted it to a Singularity runtime file. 
 
-The container file we run is: alphafold1103.sif (not exactly sure where to put the container yet, other than the Summit filesystem for sharing, it is too large to load into Github like a normal file).
+The container file we run is: `alphafold1103.sif` (not exactly sure where to put the container yet, other than the Summit filesystem for sharing, it is too large to load into Github like a normal file).
 
 It is built for CUDA11.
 
