@@ -56,12 +56,12 @@ sleep 5
 
 # Now launch ALL the dask workers simultaneously.  They won't come up at the
 # same time, though.
-jsrun -h $CARLA_HOME --smpiargs="off" --nrs $NUM_NODES -e individual \
+jsrun -h $RUN_DIR --smpiargs="off" --nrs $NUM_NODES -e individual \
 --stdio_stdout ${RUN_DIR}/worker_out.%j.%h.%p \
 --stdio_stderr ${RUN_DIR}/worker_error.%j.%h.%p \
 --tasks_per_rs 1 --cpu_per_rs 39 --gpu_per_rs 6 --rs_per_host 1 -b none \
 --latency_priority gpu-cpu \
-${SRC_PATH}/gremlin/scripts/summit/gremlin/spawn_worker.sh &
+/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/issue-5/spawn_worker.sh &
 
 # Now block until the desired number of workers is registered with the
 # scheduler.

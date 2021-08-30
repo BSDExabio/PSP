@@ -5,7 +5,7 @@
 # resource set.
 #
 # Should be executed:
-# jsrun -h $CARLA_HOME -n 1 -c 8 -g 1 spawn_worker.sh $run_number
+# jsrun -n 1 -c 8 -g 1 spawn_worker.sh
 #
 
 # Get common setup for alphafoldtaskmgr runs
@@ -26,8 +26,7 @@ gpus=$(nvidia-smi --list-gpus | cut -c5)
 for gpu in $gpus; do
     env OMP_NUM_THREADS=4 SINGULARITYENV_SDL_VIDEODRIVER=offscreen CUDA_VISIBLE_DEVICES=$gpu \
       CARLA_PORT=$port dask-worker --nthreads 1 --nprocs 1 --interface ib0 \
-      --no-dashboard --no-nanny --reconnect --scheduler-file ${SCHEDULER_FILE}.run_${1} &
-
+      --no-dashboard --no-nanny --reconnect --scheduler-file ${SCHEDULER_FILE} &
 done
 
 wait
