@@ -1,0 +1,12 @@
+*.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/*.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_2_ptm.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_3_ptm.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_4_ptm.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_5_ptm.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_*.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_1.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_2.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_3.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_4.npz filter=lfs diff=lfs merge=lfs -text
+alphafold_databases/params/params_model_5.npz filter=lfs diff=lfs merge=lfs -text
