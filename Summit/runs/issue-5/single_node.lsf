@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Batch submission script for small alphafoldtaskmgr run on Summit
+#
+# Support issue-5 on the kanban board.
+#
+#BSUB -P BIP198
+#BSUB -W 00:30
+#BSUB -nnodes 1
+#BSUB -J issue-5
+#BSUB -o out.alphafold.%J
+#BSUB -e err.alphafold.%J
+#BSUB -q debug
+
+
+# Where we will run this script and expect output
+RUN_DIR=/gpfs/alpine/bip198/scratch/mcoletti/runs/issue-5
+
+# dask file for scheduler and workers to find each other
+SCHEDULER_FILE=${RUN_DIR}/scheduler_file.json
+
+# Get common setup for alphafoldtaskmgr runs
