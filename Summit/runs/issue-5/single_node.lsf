@@ -63,8 +63,6 @@ jsrun -h $RUN_DIR --smpiargs="off" --nrs $NUM_NODES -e individual \
 --latency_priority gpu-cpu \
 /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/issue-5/spawn_worker.sh &
 
-# Now block until the desired number of workers is registered with the
-# scheduler.
 echo Waiting for workers
 
 # Hopefully long enough for some workers to spin up and wait for work
