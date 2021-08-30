@@ -69,3 +69,20 @@ echo Waiting for workers
 
 # Hopefully long enough for some workers to spin up and wait for work
 sleep 30
+
+# Run the client EA; like the scheduler, this just needs a single core to
+# noodle away on.
+jsrun  --smpiargs="off" -e individual \
+--stdio_stdout ${RUN_DIR}/alphafold_stdout.%j.%h.%p \
+--stdio_stderr ${RUN_DIR}/alphafold_stderr.%j.%h.%p \
+--nrs 1 --cpu_per_rs 1 --gpu_per_rs 0 --rs_per_host 1 --latency_priority cpu-cpu \
+-b none \
+python3 -u /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/src/alphataskmgr/alphafoldtaskmgr.py \
+--scheduler-file $SCHEDULER_FILE \
+--input-file /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/test.lst
+
+
+# We're done so kill the scheduler and worker processes
+jskill all
+
+echo Run finished.
