@@ -4,6 +4,19 @@
     Ingests a file of proteins and distributes work to process them among
     allocated dask workers.  The dask workers will be assigned to a single
     GPU and so any CPUs.
+
+    usage: alphafoldtaskmgr.py [-h] [--scheduler-file SCHEDULER_FILE] [--scheduler-timeout SCHEDULER_TIMEOUT] [--input-file INPUT_FILE]
+
+AlphaFold task manager
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --scheduler-file SCHEDULER_FILE, -s SCHEDULER_FILE
+                        dask scheduler file
+  --scheduler-timeout SCHEDULER_TIMEOUT, -t SCHEDULER_TIMEOUT
+                        dask scheduler timeout
+  --input-file INPUT_FILE, -i INPUT_FILE
+                        file containing proteins to process
 """
 import argparse
 import logging
@@ -15,12 +28,15 @@ from rich.console import Console
 from rich.table import Table
 from rich import print
 from rich import pretty
+
 pretty.install()
 
 from rich.traceback import install
+
 install()
 
 from rich.logging import RichHandler
+
 rich_handler = RichHandler(rich_tracebacks=True,
                            markup=True)
 logging.basicConfig(level='INFO', format='%(message)s',
@@ -48,6 +64,7 @@ def read_input_file(input_file):
     """
     input_file_path = Path(input_file)
     if not input_file_path.exists():
+        logging.critical(f'{input_file} does not exist')
         raise RuntimeError(f'{input_file} does not exist')
 
     with input_file_path.open('r') as file_input:
@@ -56,6 +73,10 @@ def read_input_file(input_file):
 
 
 def run_alphafold(protein):
+    """ This is the task sent to the workers to run alphafold
+    :param protein: is the protein to be processed for this task
+    :returns: start and stop times as well as protein processed
+    """
     start_time = time()
 
     # TODO swap in subprocess call to alphafold here
@@ -86,7 +107,7 @@ if __name__ == '__main__':
 
     logging.info(f'Read {len(proteins)} proteins to process.')
 
-    with Client(LocalCluster(),#scheduler_file=args.scheduler_file,
+    with Client(LocalCluster(),  # scheduler_file=args.scheduler_file,
                 timeout=args.scheduler_timeout,
                 name='alphafoldtaskmgr') as client:
 
@@ -99,8 +120,9 @@ if __name__ == '__main__':
         for i, finished_task in enumerate(ac):
             start_time, stop_time, protein = finished_task.result()
 
-            print(f'{protein} processed in '
-                  f'{(stop_time - start_time) / 60} minutes.')
+            logging.info(f'{protein} processed in '
+                         f'{(stop_time - start_time) / 60} minutes.')
+            logging.info(f'{len(proteins) - i} proteins left')
 
         logging.info(f'Finished with {get_num_workers(client)} dask workers '
                      f'still active.')
