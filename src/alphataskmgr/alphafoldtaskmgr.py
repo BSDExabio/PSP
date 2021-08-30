@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
     logging.info(f'Read {len(proteins)} proteins to process.')
 
-    with Client(LocalCluster(),  # scheduler_file=args.scheduler_file,
+    with Client(scheduler_file=args.scheduler_file,
                 timeout=args.scheduler_timeout,
                 name='alphafoldtaskmgr') as client:
 
