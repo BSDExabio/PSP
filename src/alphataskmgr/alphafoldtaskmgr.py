@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
             logging.info(f'{protein} processed in '
                          f'{(stop_time - start_time) / 60} minutes.')
-            logging.info(f'{len(proteins) - i} proteins left')
+            logging.info(f'{len(proteins) - i - 1} proteins left')
 
         logging.info(f'Finished with {get_num_workers(client)} dask workers '
                      f'still active.')
