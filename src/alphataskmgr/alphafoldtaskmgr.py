@@ -5,16 +5,16 @@
     allocated dask workers.  The dask workers will be assigned to a single
     GPU and so any CPUs.
 
-    usage: alphafoldtaskmgr.py [-h] [--scheduler-file SCHEDULER_FILE] [--scheduler-timeout SCHEDULER_TIMEOUT] [--input-file INPUT_FILE]
+usage: alphafoldtaskmgr.py [-h] [--scheduler-timeout SCHEDULER_TIMEOUT] --scheduler-file SCHEDULER_FILE --input-file INPUT_FILE
 
 AlphaFold task manager
 
 optional arguments:
   -h, --help            show this help message and exit
-  --scheduler-file SCHEDULER_FILE, -s SCHEDULER_FILE
-                        dask scheduler file
   --scheduler-timeout SCHEDULER_TIMEOUT, -t SCHEDULER_TIMEOUT
                         dask scheduler timeout
+  --scheduler-file SCHEDULER_FILE, -s SCHEDULER_FILE
+                        dask scheduler file
   --input-file INPUT_FILE, -i INPUT_FILE
                         file containing proteins to process
 """
@@ -90,10 +90,11 @@ def run_alphafold(protein):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='AlphaFold task manager')
 
-    parser.add_argument('--scheduler-file', '-s', help='dask scheduler file')
     parser.add_argument('--scheduler-timeout', '-t', default=5000, type=int,
                         help='dask scheduler timeout')
-    parser.add_argument('--input-file', '-i',
+    parser.add_argument('--scheduler-file', '-s', required=True,
+                        help='dask scheduler file')
+    parser.add_argument('--input-file', '-i', required=True,
                         help='file containing proteins to process')
 
     args = parser.parse_args()
