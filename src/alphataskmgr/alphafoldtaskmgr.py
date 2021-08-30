@@ -23,11 +23,11 @@ install()
 from rich.logging import RichHandler
 rich_handler = RichHandler(rich_tracebacks=True,
                            markup=True)
-logging.basicConfig(level='DEBUG', format='%(message)s',
+logging.basicConfig(level='INFO', format='%(message)s',
                     datefmt="[%Y/%m/%d %H:%M:%S]",
                     handlers=[rich_handler])
 
-from distributed import Client, LocalCluster
+from distributed import Client, LocalCluster, as_completed
 
 
 def get_num_workers(client):
@@ -51,7 +51,8 @@ def read_input_file(input_file):
         raise RuntimeError(f'{input_file} does not exist')
 
     with input_file_path.open('r') as file_input:
-        return list(file_input.readlines())
+        # We call strip(x) to nuke trailing newline
+        return list(x.strip() for x in file_input)
 
 
 def run_alphafold(protein):
@@ -80,19 +81,18 @@ if __name__ == '__main__':
     logging.info(f'Scheduler timeout: {args.scheduler_timeout}')
     logging.info(f'Input file: {args.input_file}')
 
-    with Client(scheduler_file=args.scheduler_file,
+    # Slurp in all the proteins we have to process
+    proteins = read_input_file(args.input_file)
+
+    logging.info(f'Read {len(proteins)} proteins to process.')
+
+    with Client(LocalCluster(),#scheduler_file=args.scheduler_file,
                 timeout=args.scheduler_timeout,
                 name='alphafoldtaskmgr') as client:
 
         logging.info(f'Starting with {get_num_workers(client)} dask workers.')
 
-
-        # Slurp in all the proteins we have to process
-        proteins = read_input_file(args.input_file)
-
-        logging.info(f'Read {len(proteins)} proteins to process.')
-
-        task_futures = client.map(run_alphafold, task_values)
+        task_futures = client.map(run_alphafold, proteins)
 
         ac = as_completed(task_futures)
 
