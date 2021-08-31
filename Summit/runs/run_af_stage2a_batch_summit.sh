@@ -15,7 +15,12 @@ base_dir=/gpfs/alpine/bip198/proj-shared/mcoletti/PSP
 #fea_dir=/gpfs/alpine/proj-shared/bip198/alphafold_test/casp14/af_reduced_db
 #fea_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db
 #fea_dir=${base_dir}/casp14/af_reduced_db
-fea_dir=/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea
+
+# Use this for other list.
+#fea_dir=/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea
+
+# Use this for test lists
+fea_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/
 
 preset=reduced_dbs
 
