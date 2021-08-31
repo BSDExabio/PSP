@@ -9,13 +9,13 @@ fi
 target_file=$1
 out_dir=$2
 
-base_dir=/gpfs/alpine/stf007/scratch/rprout/AlphaFold
+base_dir=/gpfs/alpine/bip198/proj-shared/mcoletti/PSP
 
 #seq_file=/gpfs/alpine/proj-shared/bip198/alphafold_test/casp14/seq/target.seq
 #fea_dir=/gpfs/alpine/proj-shared/bip198/alphafold_test/casp14/af_reduced_db
 #fea_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db
 #fea_dir=${base_dir}/casp14/af_reduced_db
-fea_dir=${base_dir}/desulfovibrio/afold_fea
+fea_dir=${base_dir}/Summit/alphafold_databases/params/
 
 preset=reduced_dbs
 
@@ -23,9 +23,9 @@ preset=reduced_dbs
 
 #af_dir=/app/alphafold
 #af_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold
-af_dir=${base_dir}/alphafold
+af_dir=${base_dir}/Summit/alphafold
 #data_dir=/gpfs/alpine/world-shared/bip198/alphafold_databases
-data_dir=${base_dir}/alphafold_databases
+data_dir=${base_dir}/Summit/alphafold_databases
 #data_dri=fea_dir=${base_dir}/desulfovibrio/afold_fea
 
 ##########################################################################################
