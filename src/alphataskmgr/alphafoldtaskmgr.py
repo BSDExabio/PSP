@@ -90,7 +90,7 @@ def run_alphafold(protein):
     args.append('--nv')
     args.append('/gpfs/alpine/stf007/world-shared/subil/alphafold1103.sif')
     args.append('/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/alphafold/run_alphafold_stage2a.py')
-    args.append(f'--fast_paths={protein}')
+    args.append(f'--fasta_paths={protein}')
     args.append(f'--preset=reduced_dbs')
     args.append(f'--data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/')
     args.append(f'--output_dir={protein}')
