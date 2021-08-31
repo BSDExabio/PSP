@@ -146,6 +146,8 @@ def predict_structure(
   # Run the models.
   for model_name, model_runner in model_runners.items():
     logging.info('Running model %s', model_name)
+    sys.stdout.flush()
+    sys.stderr.flush()
     t_0 = time.time()
     processed_feature_dict = model_runner.process_features(
         feature_dict, random_seed=random_seed)
@@ -178,6 +180,7 @@ def predict_structure(
     unrelaxed_pdb_path = os.path.join(output_dir, f'unrelaxed_{model_name}.pdb')
     with open(unrelaxed_pdb_path, 'w') as f:
       f.write(protein.to_pdb(unrelaxed_protein))
+      f.flush()
 
     # Relax the prediction.
     '''
@@ -205,12 +208,16 @@ def predict_structure(
   ranking_output_path = os.path.join(output_dir, 'ranking_debug.json')
   with open(ranking_output_path, 'w') as f:
     f.write(json.dumps({'plddts': plddts, 'order': ranked_order}, indent=4))
+    f.flush()
 
   logging.info('Final timings for %s: %s', fasta_name, timings)
+  sys.stdout.flush()
+  sys.stderr.flush()
 
   timings_output_path = os.path.join(output_dir, 'timings_str.json')
   with open(timings_output_path, 'w') as f:
     f.write(json.dumps(timings, indent=4))
+    f.flush()
 
 
 def main(argv):
