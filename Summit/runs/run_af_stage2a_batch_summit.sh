@@ -25,7 +25,7 @@ preset=reduced_dbs
 #af_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold
 af_dir=${base_dir}/Summit/alphafold
 #data_dir=/gpfs/alpine/world-shared/bip198/alphafold_databases
-data_dir=${base_dir}/Summit/alphafold_databases
+data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/
 #data_dri=fea_dir=${base_dir}/desulfovibrio/afold_fea
 
 ##########################################################################################
