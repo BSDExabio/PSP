@@ -128,7 +128,7 @@ def predict_structure(
 
   feature_dir = os.path.join(feature_dir_base, fasta_name)
   if not os.path.exists(feature_dir):
-    print(f'{feature_dir} does not exist ... exiting')
+    logging.fatal(f'{feature_dir} does not exist ... exiting')
     sys.exit(1)
 
   # Get features.
