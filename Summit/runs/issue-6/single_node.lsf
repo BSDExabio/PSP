@@ -10,7 +10,6 @@
 #BSUB -J issue-6
 #BSUB -o out.alphafold.%J
 #BSUB -e err.alphafold.%J
-#BSUB -q debug
 
 
 # Where we will run this script and expect output
