@@ -94,7 +94,7 @@ def run_alphafold(protein):
     args.append(f'--fasta_paths={protein}.fas')
     args.append(f'--preset=reduced_dbs')
     args.append(f'--data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/')
-    args.append(f'--output_dir={protein}')
+    args.append(f'--output_dir=.')
 
     # for non "test" lists
     # args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea')
@@ -103,7 +103,7 @@ def run_alphafold(protein):
     args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/')
 
     args.append(f'--model_names=model_1_ptm,model_2_ptm,model_3_ptm,model_4_ptm,model_5_ptm')
-    args.append('--benchmark')
+    # args.append('--benchmark')
 
     sys.stdout.write('args: ' + str(args))
 
