@@ -68,8 +68,9 @@ def read_input_file(input_file):
         raise RuntimeError(f'{input_file} does not exist')
 
     with input_file_path.open('r') as file_input:
-        # We call strip(x) to nuke trailing newline
-        return list(x.strip() for x in file_input)
+        # Each line contains the protein and the number of segments; we only
+        # want the protein, so we grab that.
+        return list(x.split()[0] for x in file_input)
 
 
 def run_alphafold(protein):
