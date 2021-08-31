@@ -106,7 +106,8 @@ def run_alphafold(protein):
 
     sys.stdout.write('args: ' + str(args))
 
-    completed_process = subprocess.run(args=args, capture_output=True)
+    completed_process = subprocess.run(args=args, text=True,
+                                       capture_output=True)
 
     sys.stdout.write(completed_process.stdout)
     sys.stdout.flush()
