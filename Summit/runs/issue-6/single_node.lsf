@@ -6,7 +6,7 @@
 #
 #BSUB -P BIF135
 #BSUB -W 02:00
-#BSUB -nnodes 1
+#BSUB -nnodes 2
 #BSUB -J issue-6
 #BSUB -o out.alphafold.%J
 #BSUB -e err.alphafold.%J
@@ -77,7 +77,7 @@ jsrun  --smpiargs="off" -e individual \
 -b none \
 python3 -u /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/src/alphataskmgr/alphafoldtaskmgr.py \
 --scheduler-file $SCHEDULER_FILE \
---input-file /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/test.lst
+--input-file /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/casp14_fm.lst
 
 
 # We're done so kill the scheduler and worker processes
