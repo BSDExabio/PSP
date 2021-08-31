@@ -5,7 +5,7 @@
 # Support issue-5 on the kanban board.
 #
 #BSUB -P BIF135
-#BSUB -W 00:30
+#BSUB -W 02:00
 #BSUB -nnodes 1
 #BSUB -J issue-5
 #BSUB -o out.alphafold.%J

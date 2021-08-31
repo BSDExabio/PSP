@@ -21,6 +21,7 @@ optional arguments:
 import argparse
 import logging
 import csv
+import subprocess
 from pathlib import Path
 from time import time, sleep
 
@@ -28,22 +29,21 @@ from rich.console import Console
 from rich.table import Table
 from rich import print
 from rich import pretty
-
 pretty.install()
 
 from rich.traceback import install
-
 install()
 
 from rich.logging import RichHandler
-
 rich_handler = RichHandler(rich_tracebacks=True,
                            markup=True)
 logging.basicConfig(level='INFO', format='%(message)s',
                     datefmt="[%Y/%m/%d %H:%M:%S]",
                     handlers=[rich_handler])
 
-from distributed import Client, LocalCluster, as_completed
+from distributed import Client, as_completed
+
+
 
 
 def get_num_workers(client):
@@ -78,10 +78,43 @@ def run_alphafold(protein):
     :param protein: is the protein to be processed for this task
     :returns: start and stop times as well as protein processed
     """
+    import sys
+
     start_time = time()
 
-    # TODO swap in subprocess call to alphafold here
-    sleep(3)
+    args = []
+    args.append('singularity')
+    args.append('exec')
+    args.append('--bind')
+    args.append('/gpfs/alpine:/gpfs/alpine')
+    args.append('--nv')
+    args.append('/gpfs/alpine/stf007/world-shared/subil/alphafold1103.sif')
+    args.append('/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/alphafold/run_alphafold_stage2a.py')
+    args.append(f'--fast_paths={protein}')
+    args.append(f'--preset=reduced_dbs')
+    args.append(f'--data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/')
+    args.append(f'--output_dir={protein}')
+
+    # for non "test" lists
+    # args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea')
+
+    # for "test" lists
+    args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/')
+
+    args.append(f'--model_names=model_1_ptm,model_2_ptm,model_3_ptm,model_4_ptm,model_5_ptm')
+    args.append('--benchmark')
+
+    sys.stdout.write('args: ' + str(args))
+
+    completed_process = subprocess.run(args=args, capture_output=True)
+
+    sys.stdout.write(completed_process.stdout)
+    sys.stdout.flush()
+    sys.stderr.write(completed_process.stderr)
+    sys.stderr.flush()
+
+    if completed_process.returncode != 0:
+        print(f'Process returned with code {completed_process.returncode}')
 
     stop_time = time()
 
