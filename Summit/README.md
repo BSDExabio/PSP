@@ -16,8 +16,8 @@ It is built for CUDA11.
 
 - `alphafold`: Contains alphafold codebase, in addtion to our own scripts.  
 - `alphafold_databases/params`: Contains parameters for the models. 
-- `casp14`: Contains casp14 list file and reduced database for testing (on GPFS).
-- `desulfovibrio:` A larger set of 559 sequences in the list file (on GPFS).
+- `casp14`: Contains casp14 list file and reduced database for testing (on GPFS at `/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/`).
+- `desulfovibrio:` A larger set of 559 sequences in the list file (on GPFS at `/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea/`).
 - `run:` Contains run scripts. 
 
 
