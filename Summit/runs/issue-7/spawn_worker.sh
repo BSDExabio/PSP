@@ -9,10 +9,10 @@
 #
 
 # Get common setup for alphafoldtaskmgr runs
-source /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/issue-6/common.env
+source /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/issue-7/common.env
 
 # Where we will run this script and expect output
-RUN_DIR=/gpfs/alpine/bip198/scratch/mcoletti/runs/issue-6
+RUN_DIR=/gpfs/alpine/bip198/scratch/mcoletti/runs/issue-7
 
 # dask file for scheduler and workers to find each other
 SCHEDULER_FILE=${RUN_DIR}/scheduler_file.json
