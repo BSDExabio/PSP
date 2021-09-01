@@ -24,6 +24,7 @@ import pickle
 import random
 import sys
 import time
+import traceback
 from typing import Dict
 
 from absl import app
@@ -294,17 +295,24 @@ def main(argv):
   logging.info('Using random seed %d for the data pipeline', random_seed)
 
   # Predict structure for each of the sequences.
-  for fasta_path, fasta_name in zip(FLAGS.fasta_paths, fasta_names):
-    predict_structure(
-        fasta_path=fasta_path,
-        fasta_name=fasta_name,
-        output_dir_base=FLAGS.output_dir,
-        feature_dir_base=FLAGS.feature_dir,
-        #data_pipeline=data_pipeline,
-        model_runners=model_runners,
-        #amber_relaxer=amber_relaxer,
-        benchmark=FLAGS.benchmark,
-        random_seed=random_seed)
+  try:
+      for fasta_path, fasta_name in zip(FLAGS.fasta_paths, fasta_names):
+        predict_structure(
+            fasta_path=fasta_path,
+            fasta_name=fasta_name,
+            output_dir_base=FLAGS.output_dir,
+            feature_dir_base=FLAGS.feature_dir,
+            #data_pipeline=data_pipeline,
+            model_runners=model_runners,
+            #amber_relaxer=amber_relaxer,
+            benchmark=FLAGS.benchmark,
+            random_seed=random_seed)
+  except Exception as e:
+      print(f'Thew exception {e!s}')
+      traceback.print_exc()
+      # return non-zero exit so that the calling dask script can see it
+      # and whine.
+      sys.exit(2)
 
 
 if __name__ == '__main__':
