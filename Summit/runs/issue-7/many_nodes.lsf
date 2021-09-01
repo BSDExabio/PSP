@@ -76,7 +76,7 @@ jsrun  --smpiargs="off" -e individual \
 -b none \
 python3 -u /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/src/alphataskmgr/alphafoldtaskmgr.py \
 --scheduler-file $SCHEDULER_FILE \
---input-file /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/casp14_fm.lst
+--input-file  /gpfs/alpine/world-shared/bif135/desulfovibrio/de_hildenborough.lst
 
 
 # We're done so kill the scheduler and worker processes

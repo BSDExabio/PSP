@@ -92,15 +92,15 @@ def run_alphafold(protein):
     args.append('python3')
     args.append('/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/alphafold/run_alphafold_stage2a.py')
     args.append(f'--fasta_paths={protein}.fas')
-    args.append(f'--preset=reduced_dbs')
-    args.append(f'--data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/')
-    args.append(f'--output_dir=.')
+    args.append('--preset=reduced_dbs')
+    args.append('--data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/')
+    args.append('--output_dir=.')
 
     # for non "test" lists
-    # args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea')
+    args.append('--feature_dir=/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea')
 
     # for "test" lists
-    args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/')
+    # args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/')
 
     args.append(f'--model_names=model_1_ptm,model_2_ptm,model_3_ptm,model_4_ptm,model_5_ptm')
     # args.append('--benchmark')
