@@ -88,6 +88,8 @@ def run_alphafold(protein):
     args.append('--bind')
     args.append('/gpfs/alpine:/gpfs/alpine')
     args.append('--nv')
+    args.append('--env-file')
+    args.append('/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/test-env-file')
     args.append('/gpfs/alpine/stf007/world-shared/subil/alphafold1103.sif')
     args.append('python3')
     args.append('/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/alphafold/run_alphafold_stage2a.py')
@@ -116,7 +118,8 @@ def run_alphafold(protein):
     sys.stderr.flush()
 
     if completed_process.returncode != 0:
-        print(f'Process returned with code {completed_process.returncode}')
+        print(f'Process returned with code'
+              f' {completed_process.returncode} for protein {protein}')
 
     stop_time = time()
 
