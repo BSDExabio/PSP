@@ -73,9 +73,10 @@ def read_input_file(input_file):
         return list(x.split()[0] for x in file_input)
 
 
-def run_alphafold(protein):
+def run_alphafold(protein, preset):
     """ This is the task sent to the workers to run alphafold
     :param protein: is the protein to be processed for this task
+    :param preset: is the AlphaFold preset, and can be casp14 or reduced_dbs
     :returns: start and stop times as well as protein processed
     """
     import sys
@@ -94,7 +95,7 @@ def run_alphafold(protein):
     args.append('python3')
     args.append('/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/alphafold/run_alphafold_stage2a.py')
     args.append(f'--fasta_paths={protein}.fas')
-    args.append('--preset=reduced_dbs')
+    args.append(f'--preset={preset}')
     args.append('--data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/')
     args.append('--output_dir=.')
 
@@ -104,7 +105,7 @@ def run_alphafold(protein):
     # for "test" lists
     # args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/')
 
-    args.append(f'--model_names=model_1_ptm,model_2_ptm,model_3_ptm,model_4_ptm,model_5_ptm')
+    args.append(f'--model_names=model_1_ptmis,model_2_ptmis,model_3_ptmis,model_4_ptmis,model_5_ptmis')
     # args.append('--benchmark')
 
     sys.stdout.write('args: ' + str(args))
@@ -135,6 +136,9 @@ if __name__ == '__main__':
                         help='dask scheduler file')
     parser.add_argument('--input-file', '-i', required=True,
                         help='file containing proteins to process')
+    parser.add_argument('--preset', '-p',
+                        default='casp14',
+                        help='value for AlphaFold preset')
 
     args = parser.parse_args()
 
@@ -153,7 +157,7 @@ if __name__ == '__main__':
 
         logging.info(f'Starting with {get_num_workers(client)} dask workers.')
 
-        task_futures = client.map(run_alphafold, proteins)
+        task_futures = client.map(run_alphafold, proteins, preset=args.preset)
 
         ac = as_completed(task_futures)
 
