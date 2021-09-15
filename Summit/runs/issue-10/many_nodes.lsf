@@ -75,7 +75,7 @@ jsrun  --smpiargs="off" -e individual \
 --stdio_stderr ${RUN_DIR}/alphafold_stderr.%j.%h.%p \
 --nrs 1 --cpu_per_rs 1 --gpu_per_rs 0 --rs_per_host 1 --latency_priority cpu-cpu \
 -b none \
-python3 -u /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/src/alphataskmgr/alphafoldtaskmgr.py \
+/gpfs/alpine/bip198/proj-shared/mcoletti/conda/bin/python3 -u /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/src/alphataskmgr/alphafoldtaskmgr.py \
 --scheduler-file $SCHEDULER_FILE \
 --input-file  /gpfs/alpine/world-shared/bif135/desulfovibrio/de_hildenborough.lst
 
