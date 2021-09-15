@@ -101,7 +101,7 @@ def run_alphafold(protein, preset, feature_dir):
     args.append('--output_dir=.')
 
     # for non "test" lists
-    args.append(f'--feature_dir=')
+    args.append(f'--feature_dir={feature_dir}')
 
     # for "test" lists
     # args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/')
