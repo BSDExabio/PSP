@@ -73,10 +73,11 @@ def read_input_file(input_file):
         return list(x.split()[0] for x in file_input)
 
 
-def run_alphafold(protein, preset):
+def run_alphafold(protein, preset, feature_dir):
     """ This is the task sent to the workers to run alphafold
     :param protein: is the protein to be processed for this task
     :param preset: is the AlphaFold preset, and can be casp14 or reduced_dbs
+    :param feature_dir: is the directory where AlphaFold features are found
     :returns: start and stop times as well as protein processed
     """
     import sys
@@ -100,7 +101,7 @@ def run_alphafold(protein, preset):
     args.append('--output_dir=.')
 
     # for non "test" lists
-    args.append('--feature_dir=/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea')
+    args.append(f'--feature_dir=')
 
     # for "test" lists
     # args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/')
@@ -139,12 +140,17 @@ if __name__ == '__main__':
     parser.add_argument('--preset', '-p',
                         default='casp14',
                         help='value for AlphaFold preset')
+    parser.add_argument('--feature-dir',
+                        default='/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea',
+                        help='Directory where protein features are found')
 
     args = parser.parse_args()
 
     logging.info(f'Scheduler file: {args.scheduler_file}')
     logging.info(f'Scheduler timeout: {args.scheduler_timeout}')
     logging.info(f'Input file: {args.input_file}')
+    logging.info(f'Feature directory: {args.feature_dir}')
+    logging.info(f'Preset: {args.preset}')
 
     # Slurp in all the proteins we have to process
     proteins = read_input_file(args.input_file)
@@ -157,7 +163,9 @@ if __name__ == '__main__':
 
         logging.info(f'Starting with {get_num_workers(client)} dask workers.')
 
-        task_futures = client.map(run_alphafold, proteins, preset=args.preset)
+        task_futures = client.map(run_alphafold, proteins,
+                                  preset=args.preset,
+                                  feature_dir=args.feature_dir)
 
         ac = as_completed(task_futures)
 
