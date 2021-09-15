@@ -134,16 +134,16 @@ if __name__ == '__main__':
 
     parser.add_argument('--scheduler-timeout', '-t', default=5000, type=int,
                         help='dask scheduler timeout')
-    parser.add_argument('--scheduler-file', '-s', required=True,
-                        help='dask scheduler file')
-    parser.add_argument('--input-file', '-i', required=True,
-                        help='file containing proteins to process')
     parser.add_argument('--preset', '-p',
                         default='casp14',
                         help='value for AlphaFold preset')
     parser.add_argument('--feature-dir',
                         default='/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea',
                         help='Directory where protein features are found')
+    parser.add_argument('--scheduler-file', '-s', required=True,
+                        help='dask scheduler file')
+    parser.add_argument('--input-file', '-i', required=True,
+                        help='file containing proteins to process')
 
     args = parser.parse_args()
 
