@@ -106,7 +106,8 @@ def run_alphafold(protein, preset, feature_dir):
     # for "test" lists
     # args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/')
 
-    args.append(f'--model_names=model_1_ptmis,model_2_ptmis,model_3_ptmis,model_4_ptmis,model_5_ptmis')
+    args.append(f'--model_names=model_1_ptm,model_2_ptm,model_3_ptm,model_4_ptm,model_5_ptm')
+    # args.append(f'--model_names=model_1_ptmis,model_2_ptmis,model_3_ptmis,model_4_ptmis,model_5_ptmis')
     # args.append('--benchmark')
 
     sys.stdout.write('args: ' + str(args))
