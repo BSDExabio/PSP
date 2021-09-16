@@ -23,10 +23,8 @@ import logging
 import csv
 import subprocess
 from pathlib import Path
-from time import time, sleep
+from time import time
 
-from rich.console import Console
-from rich.table import Table
 from rich import print
 from rich import pretty
 pretty.install()
@@ -41,7 +39,7 @@ logging.basicConfig(level='INFO', format='%(message)s',
                     datefmt="[%Y/%m/%d %H:%M:%S]",
                     handlers=[rich_handler])
 
-from distributed import Client, as_completed
+from distributed import Client, as_completed, get_worker
 
 
 
@@ -81,6 +79,7 @@ def run_alphafold(protein, preset, feature_dir):
     :returns: start and stop times as well as protein processed
     """
     import sys
+    import platform
 
     start_time = time()
 
@@ -100,17 +99,14 @@ def run_alphafold(protein, preset, feature_dir):
     args.append('--data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/')
     args.append('--output_dir=.')
 
-    # for non "test" lists
+    # directory for protein feature description information files
     args.append(f'--feature_dir={feature_dir}')
 
-    # for "test" lists
-    # args.append(f'--feature_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/')
-
     args.append(f'--model_names=model_1_ptm,model_2_ptm,model_3_ptm,model_4_ptm,model_5_ptm')
-    # args.append(f'--model_names=model_1_ptmis,model_2_ptmis,model_3_ptmis,model_4_ptmis,model_5_ptmis')
-    # args.append('--benchmark')
+    # args.append('--benchmark') # this turns on computationally expensive benchmarking
 
-    sys.stdout.write('args: ' + str(args))
+    # TODO remove this reality check once we have a stable implementation
+    sys.stdout.write('args: ' + str(args) + '\n')
 
     completed_process = subprocess.run(args=args, text=True,
                                        capture_output=True)
@@ -126,7 +122,26 @@ def run_alphafold(protein, preset, feature_dir):
 
     stop_time = time()
 
-    return start_time, stop_time, protein
+    worker = get_worker()
+
+    return platform.node(), worker.id, start_time, stop_time, protein
+
+
+def append_timings(csv_writer, hostname, worker_id, start_time, stop_time, protein):
+    """ append the protein timings to the CSV timings file
+
+    :param csv_writer: CSV to which to append timings
+    :param hostname: on which the processing took place
+    :param worker_id: of the dask worker that did the processing
+    :param start_time: start time in *NIX epoch seconds
+    :param stop_time: stop time in same units
+    :param protein: that was processed
+    """
+    csv_writer.writerow({'hostname': hostname,
+                       'worker_id' : worker_id,
+                       'start_time': start_time,
+                       'stop_time' : stop_time,
+                       'protein'   : protein})
 
 
 if __name__ == '__main__':
@@ -140,6 +155,8 @@ if __name__ == '__main__':
     parser.add_argument('--feature-dir',
                         default='/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea',
                         help='Directory where protein features are found')
+    parser.add_argument('--timings-file', '-t',
+                        help='CSV file for protein processing timings')
     parser.add_argument('--scheduler-file', '-s', required=True,
                         help='dask scheduler file')
     parser.add_argument('--input-file', '-i', required=True,
@@ -150,6 +167,7 @@ if __name__ == '__main__':
     logging.info(f'Scheduler file: {args.scheduler_file}')
     logging.info(f'Scheduler timeout: {args.scheduler_timeout}')
     logging.info(f'Input file: {args.input_file}')
+    logging.info(f'Timings file: {args.timings_file!s}')
     logging.info(f'Feature directory: {args.feature_dir}')
     logging.info(f'Preset: {args.preset}')
 
@@ -157,6 +175,18 @@ if __name__ == '__main__':
     proteins = read_input_file(args.input_file)
 
     logging.info(f'Read {len(proteins)} proteins to process.')
+
+    if args.timings_file:
+        timings_file = open(args.timings_file, 'w')
+        timings_csv = csv.DictWriter(timings_file,
+                                     ['hostname',
+                                      'worker_id',
+                                      'start_time',
+                                      'stop_time',
+                                      'protein'])
+        timings_csv.writeheader()
+
+    start_time = time()
 
     with Client(scheduler_file=args.scheduler_file,
                 timeout=args.scheduler_timeout,
@@ -171,13 +201,24 @@ if __name__ == '__main__':
         ac = as_completed(task_futures)
 
         for i, finished_task in enumerate(ac):
-            start_time, stop_time, protein = finished_task.result()
+            hostname, worker_id, start_time, stop_time, protein = finished_task.result()
 
             logging.info(f'{protein} processed in '
                          f'{(stop_time - start_time) / 60} minutes.')
             logging.info(f'{len(proteins) - i - 1} proteins left')
 
+            if args.timings_file:
+                append_timings(timings_csv,
+                               hostname,
+                               worker_id,
+                               start_time,
+                               stop_time,
+                               protein)
+
         logging.info(f'Finished with {get_num_workers(client)} dask workers '
                      f'still active.')
 
-    logging.info('Done.')
+    if args.timings_file:
+        timings_file.close()
+
+    logging.info(f'Finished in {(time() - start_time) / 60 / 60:0.2f} hours')
