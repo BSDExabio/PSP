@@ -5,12 +5,11 @@
 # Support issue-9 on the kanban board.
 #
 #BSUB -P BIF135
-#BSUB -W 00:30
-#BSUB -nnodes 2
+#BSUB -W 06:00
+#BSUB -nnodes 91
 #BSUB -J issue-9
 #BSUB -o out.alphafold.%J
 #BSUB -e err.alphafold.%J
-#BSUB -q debug
 
 
 # Where we will run this script and expect output
