@@ -27,12 +27,15 @@ from time import time
 
 from rich import print
 from rich import pretty
+
 pretty.install()
 
 from rich.traceback import install
+
 install()
 
 from rich.logging import RichHandler
+
 rich_handler = RichHandler(rich_tracebacks=True,
                            markup=True)
 logging.basicConfig(level='INFO', format='%(message)s',
@@ -40,8 +43,6 @@ logging.basicConfig(level='INFO', format='%(message)s',
                     handlers=[rich_handler])
 
 from distributed import Client, as_completed, get_worker
-
-
 
 
 def get_num_workers(client):
@@ -90,19 +91,23 @@ def run_alphafold(protein, preset, feature_dir):
     args.append('/gpfs/alpine:/gpfs/alpine')
     args.append('--nv')
     args.append('--env-file')
-    args.append('/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/test-env-file')
+    args.append(
+        '/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/test-env-file')
     args.append('/gpfs/alpine/stf007/world-shared/subil/alphafold1103.sif')
     args.append('python3')
-    args.append('/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/alphafold/run_alphafold_stage2a.py')
+    args.append(
+        '/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/alphafold/run_alphafold_stage2a.py')
     args.append(f'--fasta_paths={protein}.fas')
     args.append(f'--preset={preset}')
-    args.append('--data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/')
+    args.append(
+        '--data_dir=/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_databases/')
     args.append('--output_dir=.')
 
     # directory for protein feature description information files
     args.append(f'--feature_dir={feature_dir}')
 
-    args.append(f'--model_names=model_1_ptm,model_2_ptm,model_3_ptm,model_4_ptm,model_5_ptm')
+    args.append(
+        f'--model_names=model_1_ptm,model_2_ptm,model_3_ptm,model_4_ptm,model_5_ptm')
     # args.append('--benchmark') # this turns on computationally expensive benchmarking
 
     # TODO remove this reality check once we have a stable implementation
@@ -127,7 +132,8 @@ def run_alphafold(protein, preset, feature_dir):
     return platform.node(), worker.id, start_time, stop_time, protein
 
 
-def append_timings(csv_writer, hostname, worker_id, start_time, stop_time, protein):
+def append_timings(csv_writer, hostname, worker_id, start_time, stop_time,
+                   protein):
     """ append the protein timings to the CSV timings file
 
     :param csv_writer: CSV to which to append timings
@@ -137,11 +143,11 @@ def append_timings(csv_writer, hostname, worker_id, start_time, stop_time, prote
     :param stop_time: stop time in same units
     :param protein: that was processed
     """
-    csv_writer.writerow({'hostname': hostname,
-                       'worker_id' : worker_id,
-                       'start_time': start_time,
-                       'stop_time' : stop_time,
-                       'protein'   : protein})
+    csv_writer.writerow({'hostname'  : hostname,
+                         'worker_id' : worker_id,
+                         'start_time': start_time,
+                         'stop_time' : stop_time,
+                         'protein'   : protein})
 
 
 if __name__ == '__main__':
