@@ -6,7 +6,7 @@
 #
 #BSUB -P BIF135
 #BSUB -W 00:30
-#BSUB -nnodes 1
+#BSUB -nnodes 2
 #BSUB -J issue-9
 #BSUB -o out.alphafold.%J
 #BSUB -e err.alphafold.%J
