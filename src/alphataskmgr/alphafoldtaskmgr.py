@@ -153,7 +153,7 @@ def append_timings(csv_writer, hostname, worker_id, start_time, stop_time,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='AlphaFold task manager')
 
-    parser.add_argument('--scheduler-timeout', '-t', default=5000, type=int,
+    parser.add_argument('--scheduler-timeout', '-s', default=5000, type=int,
                         help='dask scheduler timeout')
     parser.add_argument('--preset', '-p',
                         default='casp14',
