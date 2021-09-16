@@ -77,6 +77,7 @@ jsrun  --smpiargs="off" -e individual \
 -b none \
 /gpfs/alpine/bip198/proj-shared/mcoletti/conda/bin/python3 -u /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/src/alphataskmgr/alphafoldtaskmgr.py \
 --scheduler-file $SCHEDULER_FILE \
+--timings-file ${RUN_DIR}/${LSB_JOBID}_timings.csv \
 --input-file  /gpfs/alpine/world-shared/bif135/desulfovibrio/de_hildenborough.lst
 
 
