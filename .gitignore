@@ -3,6 +3,10 @@
 .idea
 local/
 
+# vim files
+*~
+*swp
+
 #Developer specific project files
 /tmp.*
 *.log
