@@ -17,6 +17,7 @@ import jax.numpy as jnp
 ### FUNCTIONS
 #######################################
 
+
 def pdb_to_string(pdb_file):
     """open and read pdb file, grabbing atom lines
     :param pdb_file: string, global or local path to a pdb file 
@@ -37,8 +38,9 @@ def pdb_to_string(pdb_file):
 if __name__ == '__main__':
     # point to the file to be minimized
     example = sys.argv[1]
+    chain_id = sys.argv[2]  # usually just 'A'
     # read in the pdb file to be minimized
-    protein_obj = protein.from_pdb_string(pdb_to_string(example),chain_id='A')
+    protein_obj = protein.from_pdb_string(pdb_to_string(example),chain_id=chain_id)
     # prepping the amber_relaxer method to be used.
     amber_relaxer = relax.AmberRelaxation(
               max_iterations=0,
