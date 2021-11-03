@@ -18,13 +18,13 @@ from simtk.openmm.app.internal.pdbstructure import PdbStructure
 ENERGY = unit.kilocalories_per_mole
 LENGTH = unit.angstroms
 RELAX_MAX_ITERATIONS = 0        # fed to openmm minimizeEnergy
-RELAX_ENERGY_TOLERANCE = 2.39   # fed to openmm minimizeEnergy
+RELAX_ENERGY_TOLERANCE = 2.39   # fed to openmm minimizeEnergy; 10 kcal mol^{-1} energy difference
 RELAX_STIFFNESS = 10.0          # fed to openmm minimizeEnergy
 RELAX_EXCLUDE_RESIDUES = []     # fed to openmm minimizeEnergy; left empty by default
 MAX_FAIL_ATTEMPTS = 100         # used to limit number of attempts to successfully run minimization
 RELAX_MAX_OUTER_ITERATIONS = 20 # used to cutoff outer while 
 
-tolerance = tolerance * ENERGY  # 2.39 kcal mol^{-1}
+tolerance = RELAX_ENERGY_TOLERANCE * ENERGY  # 2.39 kcal mol^{-1}
 stiffness = 10  * ENERGY / (LENGTH**2)  # 10 kcal mol^{-1} \AA^{-2}
 restraint_set = "non_hydrogen"      # or "c_alpha"
 exclude_residues = []               # list of residue indices
@@ -47,16 +47,20 @@ def will_restrain(atom: openmm_app.Atom, rset: str) -> bool:
 
 
 def _add_restraints(
-    system: openmm.System,
-    reference_pdb: openmm_app.PDBFile,
-    stiffness: unit.Unit,
-    rset: str,
-    exclude_residues: Sequence[int]):
+    system,
+    reference_pdb,
+    stiffness,
+    rset,
+    exclude_residues):
+    #system: openmm.System,
+    #reference_pdb: openmm_app.PDBFile,
+    #stiffness: unit.Unit,
+    #rset: str,
+    #exclude_residues: Sequence[int]):
   """Adds a harmonic potential that restrains the end-to-end distance."""
   assert rset in ["non_hydrogen", "c_alpha"]
 
-  force = openmm.CustomExternalForce(
-      "0.5 * k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)")
+  force = openmm.CustomExternalForce("0.5 * k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)")
   force.addGlobalParameter("k", stiffness)
   for p in ["x0", "y0", "z0"]:
     force.addPerParticleParameter(p)
@@ -66,8 +70,6 @@ def _add_restraints(
       continue
     if will_restrain(atom, rset):
       force.addParticle(i, reference_pdb.positions[i])
-  logging.info("Restraining %d / %d particles.",
-               force.getNumParticles(), system.getNumParticles())
   system.addForce(force)
 
 #######################################
@@ -94,12 +96,15 @@ platform = openmm.Platform.getPlatformByName("CUDA")
 # prep the simulation object
 simulation = openmm_app.Simulation(pdb.topology, system, integrator, platform)
 
+positions = pdb.positions
+
+iteration = 0
 outer_start = time.time()
 # loop over max_outer_iterations
 while iteration < RELAX_MAX_OUTER_ITERATIONS:   # ignoring violations, which may decrease efficicency of this pipeline relative to AF's
 
     # set the atom positions for the simulation's system's topology
-    simulation.context.setPositions(pdb.positions)
+    simulation.context.setPositions(positions)
         # need to check what shape/format that the pdb.positions has; maybe I can just read in the ret["min_pdb"] 
 
     inner_start = time.time()
@@ -113,22 +118,23 @@ while iteration < RELAX_MAX_OUTER_ITERATIONS:   # ignoring violations, which may
             einit = state.getPotentialEnergy().value_in_unit(ENERGY)
             posinit = state.getPositions(asNumpy=True).value_in_unit(LENGTH)
             # running minimization
-            simulation.minimizeEnergy(maxIterations=max_iterations,tolerance=tolerance)
+            simulation.minimizeEnergy(maxIterations=RELAX_MAX_ITERATIONS,tolerance=tolerance)
             # return energies and positions
             state = simulation.context.getState(getEnergy=True, getPositions=True)
             efinal = state.getPotentialEnergy().value_in_unit(ENERGY)
-            pos = state.getPositions(asNumpy=True).value_in_unit(LENGTH)
-            min_pdb = _get_pdb_string(simulation.topology, state.getPositions())
+            positions = state.getPositions(asNumpy=True).value_in_unit(LENGTH)
+            with open('test_%02d_%02d.pdb'%(iteration,attempts-1),'w') as out:
+                openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,pos,file=out)
+            minimized = True
         except Exception as e:
             print(e)
     inner_time_end = time.time() - inner_start
-    delta_e = 
-    print( f"{inner_time_end} secs spent on minimization {iteration}\n {delta_e} kcal mol^{-1} \AA^{-2} energy change\n")
+    delta_e = efinal - einit 
+    print(f"{inner_time_end} secs spent on minimization {iteration}\n{delta_e} kcal mol^{-1} energy change\n")
     if not minimized:
         raise ValueError(f"Minimization failed after {MAX_FAIL_ATTEMPTS} attempts.")
     iteration += 1
 
 # calculate rmsd between pos and posinit
-# write out the min_pdb
 
 
