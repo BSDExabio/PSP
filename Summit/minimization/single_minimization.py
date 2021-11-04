@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-    Creating the multi-layered model minimization process used in AF to be used for post-modeling AF runs
+    Creating the model minimization process used in AF to be used for post-modeling AF runs
     
 """
 
@@ -23,7 +23,6 @@ RELAX_ENERGY_TOLERANCE = 2.39   # fed to openmm minimizeEnergy; 10 kcal mol^{-1}
 RELAX_STIFFNESS = 10.0          # fed to openmm minimizeEnergy
 RELAX_EXCLUDE_RESIDUES = []     # fed to openmm minimizeEnergy; left empty by default
 MAX_FAIL_ATTEMPTS = 100         # used to limit number of attempts to successfully run minimization
-RELAX_MAX_OUTER_ITERATIONS = 20 # used to cutoff outer while 
 
 tolerance = RELAX_ENERGY_TOLERANCE * ENERGY  # 2.39 kcal mol^{-1}
 stiffness = 10  * ENERGY / (LENGTH**2)  # 10 kcal mol^{-1} \AA^{-2}
@@ -81,11 +80,11 @@ print('Starting to prep system for minimization')
 start = time.time()
 fixer = pdbfixer.PDBFixer(pdbfile=open(pdb_file,'r'))
 
-fixer.findMissingResidues() # gotta do this so that findMissingAtoms and addMissingAtoms work... weird
+fixer.findMissingResidues()
 fixer.findMissingAtoms()
-fixer.addMissingAtoms(seed=0)   # used to ID the terminal residues and add the OXT atom in the C-terminus
-fixer.addMissingHydrogens()     # used to add hydrogens (assuming pH 7.00) to residues
-openmm_app.pdbfile.PDBFile.writeFile(fixer.topology,fixer.positions,file=open('protonated.pdb','w'))  # write the new pdb file out to storage. should just avoid this
+fixer.addMissingAtoms(seed=0)
+fixer.addMissingHydrogens()
+openmm_app.pdbfile.PDBFile.writeFile(fixer.topology,fixer.positions,file=open('protonated.pdb','w'))
 
 # load pdb file into an openmm Topology and coordinates object
 pdb = openmm_app.PDBFile('protonated.pdb')
@@ -110,43 +109,39 @@ simulation = openmm_app.Simulation(pdb.topology, system, integrator, platform)
 positions = pdb.positions
 print('prepping systems took %0.2f seconds\n\nStarting minimization process'%(time.time() - start))
 
-iteration = 0
 outer_start = time.time()
-# loop over max_outer_iterations
-while iteration < RELAX_MAX_OUTER_ITERATIONS:   # not considering AF's violations, which may decrease efficicency of this pipeline relative to AF's
 
-    # set the atom positions for the simulation's system's topology
-    simulation.context.setPositions(positions)
-    # need to check what shape/format that the pdb.positions has; maybe I can just read in the ret["min_pdb"] 
+# set the atom positions for the simulation's system's topology
+simulation.context.setPositions(positions)
+# need to check what shape/format that the pdb.positions has; maybe I can just read in the ret["min_pdb"] 
 
-    inner_start = time.time()
-    attempts = 0
-    minimized = False
+inner_start = time.time()
+attempts = 0
+minimized = False
+# return energies and positions
+state = simulation.context.getState(getEnergy=True, getPositions=True)
+einit = state.getPotentialEnergy().value_in_unit(ENERGY)
+posinit = state.getPositions(asNumpy=True).value_in_unit(LENGTH)
 
-    while not minimized and attempts < MAX_FAIL_ATTEMPTS:
-        attempts += 1
-        try:
-            # return energies and positions
-            state = simulation.context.getState(getEnergy=True, getPositions=True)
-            einit = state.getPotentialEnergy().value_in_unit(ENERGY)
-            posinit = state.getPositions(asNumpy=True).value_in_unit(LENGTH)
-            # running minimization
-            simulation.minimizeEnergy(maxIterations=RELAX_MAX_ITERATIONS,tolerance=tolerance)
-            # return energies and positions
-            state = simulation.context.getState(getEnergy=True, getPositions=True)
-            efinal = state.getPotentialEnergy().value_in_unit(ENERGY)
-            positions = state.getPositions(asNumpy=True).value_in_unit(LENGTH)
-            openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=open(out_file_name[:-4] + '_%02d_%02d.pdb'%(iteration,attempts-1),'w'))
-            minimized = True
-        except Exception as e:
-            print(e)
-    
-    inner_time_end = time.time() - inner_start
-    delta_e = efinal - einit 
-    print(f"{inner_time_end} secs spent on minimization {iteration}\n{delta_e} kcal mol^{-1} energy change ({einit},{efinal})\n")
-    if not minimized:
-        raise ValueError(f"Minimization failed after {MAX_FAIL_ATTEMPTS} attempts.")
-    iteration += 1
+while not minimized and attempts < MAX_FAIL_ATTEMPTS:
+    attempts += 1
+    try:
+        # running minimization
+        simulation.minimizeEnergy(maxIterations=RELAX_MAX_ITERATIONS,tolerance=tolerance)
+        # return energies and positions
+        state = simulation.context.getState(getEnergy=True, getPositions=True)
+        efinal = state.getPotentialEnergy().value_in_unit(ENERGY)
+        positions = state.getPositions(asNumpy=True).value_in_unit(LENGTH)
+        openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=open(out_file_name[:-4] + '_%02d.pdb'%(attempts-1),'w'))
+        minimized = True
+    except Exception as e:
+        print(e)
+
+inner_time_end = time.time() - inner_start
+delta_e = efinal - einit 
+print(f"{inner_time_end} secs spent on minimization {attempts}\n{delta_e} kcal mol^{-1} energy change ({einit},{efinal})\n")
+if not minimized:
+    raise ValueError(f"Minimization failed after {MAX_FAIL_ATTEMPTS} attempts.")
 
 # calculate rmsd between pos and posinit
 
