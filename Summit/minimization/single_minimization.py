@@ -1,41 +1,20 @@
 #!/usr/bin/env python3
 """
     Creating the model minimization process used in AF to be used for post-modeling AF runs
-    
 """
 
 #######################################
 ### PREAMBLE
 #######################################
-import argparse
-import logging
+import sys
 import time
-import numpy as np
+import logging
 import pdbfixer
 from simtk import openmm
 from simtk import unit
 from simtk.openmm import app as openmm_app
 from simtk.openmm.app.internal.pdbstructure import PdbStructure
 
-from rich.console import Console
-from rich.table import Table
-from rich import print
-from rich import pretty
-pretty.install()
-from rich.traceback import install
-install()
-from rich.logging import RichHandler
-rich_handler = RichHandler(rich_tracebacks=True,
-                           markup=True)
-logging.basicConfig(level='INFO', format='%(message)s',
-                    datefmt="[%Y/%m/%d %H:%M:%S]",
-                    handlers=[rich_handler])
-
-from distributed import Client, as_completed
-
-# NOTE: hard coded variables for the moment.
-RESTRAINT_SET = "non_hydrogen"  # or "c_alpha"
-RELAX_EXCLUDE_RESIDUES = []     # fed to openmm minimizeEnergy; left empty by default
 
 #######################################
 ### FUNCTIONS
@@ -85,7 +64,7 @@ def fix_protein(input_pdb_file,output_pdb_file = 'protonated.pdb'):
     return output_pdb_file
 
 
-def prep_protein(pdb_file,restraint_set,exclude_residues,forcefield="amber99sb.xml",restraint_stiffness = 10.0,platform='CUDA',energy_units = unit.kilocalories_per_mole,length_units = unit.angstroms):
+def prep_protein(pdb_file,restraint_set,forcefield="amber99sb.xml",restraint_stiffness=10.0,exclude_residues=[],platform='CUDA',energy_units=unit.kilocalories_per_mole,length_units=unit.angstroms):
     """
     """
     
@@ -154,7 +133,7 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
     # calculate rmsd between pos and posinit
     delta_e = efinal - einit 
     
-    #print(f"{time_end} secs spent on minimization {attempts}\n{delta_e} kcal mol^{-1} energy change ({einit},{efinal})\n")
+    logging.info(f"{delta_e} kcal mol^{-1} energy change ({einit},{efinal})\n")
     
     if not minimized:
         raise ValueError(f"Minimization failed after {fail_attempts} attempts.")
@@ -163,6 +142,17 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
 def run_pipeline(pdb_file,restraint_set,relax_exclude_residues):
     """
     """
+
+
+#######################################
+### MAIN
+#######################################
+
+if __name__ == '__main__':
+    # read command line arguments
+    pdb_file = sys.argv[1]
+    restraint_set = sys.argv[2]
+    relax_exclude_residues = sys.argv[3]
 
     # load pdb file and add missing atoms (mainly hydrogens)
     start = time.time()
@@ -183,65 +173,5 @@ def run_pipeline(pdb_file,restraint_set,relax_exclude_residues):
     print(time_end)
 
 
-#######################################
-### DASK RELATED FUNCTIONS
-#######################################
-
-def get_num_workers(client):
-    """
-    :param client: active dask client
-    :return: the number of workers registered to the scheduler
-    """
-    scheduler_info = client.scheduler_info()
-
-    return len(scheduler_info['workers'].keys())
-
-def read_input_file(input_file):
-    """ Read text file containing proteins to be processed
-    :param input_file: str; a path to input file of proteins
-    :return: list of strings that each point to a protein model to be processed
-    """
-    with open(input_file,'r') as file_input:
-        # Each line contains the path to a AF model .pdb file
-        return list(x for x in file_input)
-
-
-#######################################
-### MAIN
-#######################################
-
-if __name__ == '__main__':
-    # read command line arguments
-    parser = argparse.ArgumentParser(description='Post-AF energy minimization task manager')
-    parser.add_argument('--scheduler-timeout', '-t', default=5000, type=int, help='dask scheduler timeout')
-    parser.add_argument('--scheduler-file', '-s', required=True, help='dask scheduler file')
-    parser.add_argument('--input-file', '-i', required=True, help='file containing proteins to process')
-    args = parser.parse_args()
-
-    logging.info(f'Scheduler file: {args.scheduler_file}')
-    logging.info(f'Scheduler timeout: {args.scheduler_timeout}')
-    logging.info(f'Input file: {args.input_file}')
-
-    # create list of strings pointing to pdb files to be energy minimized
-    proteins = read_input_file(args.input_file)
-
-    logging.info(f'Read {len(proteins)} proteins to process.')
-
-    # starting dask client
-    with Client(scheduler_file=args.scheduler_file,timeout=args.scheduler_timeout,name='energymintaskmgr') as client:
-        logging.info(f'Starting with {get_num_workers(client)} dask workers.')
-        # setting the client task
-        task_futures = client.map(run_pipeline, proteins, RESTRAINT_SET,RELAX_EXCLUDE_RESIDUES)
         
-        # pushing tasks and watching them complete
-        ac = as_completed(task_futures)
-        for i, finished_task in enumerate(ac):
-            start_time, stop_time, protein = finished_task.result()
-            logging.info(f'{protein} processed in {(stop_time - start_time) / 60} minutes.')
-            logging.info(f'{len(proteins) - i - 1} proteins left')
-        
-        logging.info(f'Finished with {get_num_workers(client)} dask workers still active.')
-
-    logging.info('Done.')
-
 
