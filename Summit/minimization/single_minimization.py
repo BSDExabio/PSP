@@ -127,7 +127,7 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
             openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=open(out_file_name[:-4] + '_%02d.pdb'%(attempts-1),'w'))
             minimized = True
         except Exception as e:
-            print(e)
+            logging.info(e)
     
     # update for more energy logging
     # calculate rmsd between pos and posinit
@@ -158,20 +158,18 @@ if __name__ == '__main__':
     start = time.time()
     pdb_file = fix_protein(pdb_file)
     time_end = time.time() - start
-    print(time_end)
+    logging.info(time_end)
     
     # send protein into an OpenMM pipeline, preparing the protein for a simulation
     start = time.time()
     simulation = prep_protein(pdb_file,restraint_set,relax_exclude_residues)
     time_end = time.time() - start
-    print(time_end)
+    logging.info(time_end)
     
     # run the minimization protocol and output minimized structure
     start = time.time()
     run_minimization(simulation,pdb_file[:-4] + '_min.pdb')
     time_end = time.time() - start
-    print(time_end)
+    logging.info(time_end)
 
-
-        
 

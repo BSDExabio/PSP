@@ -79,9 +79,14 @@ def run_minimization(model):
 
     # set up the job submit line to be used across all workers
     args = []
-    args.append()   # NOTE: append all of the important preamble
-    args.append('python3')   
-    args.append('/path/to/script.py')  # NOTE: 
+    args.append('jsrun')
+    args.append('--smpiargs="none"')
+    args.append('-n1')
+    args.append('-a1')
+    args.append('-c1')
+    args.append('-g1')
+    args.append('python3')
+    args.append('/ccs/home/davidsonrb/Scripts/debugging/af_minimization/single_minimization.py')
     args.append(model)
     args.append(RESTRAINT_SET)
     args.append(RELAX_EXCLUDE_RESIDUES)
