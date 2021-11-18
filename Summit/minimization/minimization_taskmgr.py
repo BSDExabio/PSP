@@ -143,7 +143,9 @@ def fix_protein(input_pdb_file, output_pdb_file = 'protonated.pdb', logger = Non
     fixer.addMissingAtoms(seed=0)
     fixer.addMissingHydrogens()
     logger.info(f'        Saving {output_pdb_file}.')
-    openmm_app.pdbfile.PDBFile.writeFile(fixer.topology,fixer.positions,file=open(output_pdb_file,'w'))
+    with open(output_pdb_file,'w') as save_file:
+        openmm_app.pdbfile.PDBFile.writeFile(fixer.topology,fixer.positions,file=save_file)
+    
     return output_pdb_file
 
 
@@ -199,34 +201,36 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
     
     # attempt to minimize the structure
     while not minimized and attempts < fail_attempts:
-        # running minimization
-        simulation.minimizeEnergy(maxIterations=max_iterations,tolerance=tolerance)
+        ## running minimization
+        #simulation.minimizeEnergy(maxIterations=max_iterations,tolerance=tolerance)
+        #
+        ## return energies and positions
+        #state = simulation.context.getState(getEnergy=True, getPositions=True)
+        #efinal = state.getPotentialEnergy().value_in_unit(energy_units)
+        #positions = state.getPositions(asNumpy=True).value_in_unit(length_units)
+        #logger.info(f'        Final energy: {efinal} kcal mol-1')
+        #
+        ## saving the final structure to a pdb
+        #openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=open(out_file_name + '_%02d.pdb'%(attempts-1),'w'))
+        #minimized = True
         
-        # return energies and positions
-        state = simulation.context.getState(getEnergy=True, getPositions=True)
-        efinal = state.getPotentialEnergy().value_in_unit(ENERGY)
-        positions = state.getPositions(asNumpy=True).value_in_unit(LENGTH)
-        logger.info(f'        Final energy: {efinal} kcal mol-1')
-        
-        # saving the final structure to a pdb
-        openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=open(out_file_name + '_%02d.pdb'%(attempts-1),'w'))
-        minimized = True
-        
-        #attempts += 1
-        #try:
-        #    # running minimization
-        #    simulation.minimizeEnergy(maxIterations=max_iterations,tolerance=tolerance)
-        #    
-        #    # return energies and positions
-        #    state = simulation.context.getState(getEnergy=True, getPositions=True)
-        #    efinal = state.getPotentialEnergy().value_in_unit(ENERGY)
-        #    positions = state.getPositions(asNumpy=True).value_in_unit(LENGTH)
-        #    
-        #    # 
-        #    openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=open(out_file_name + '_%02d.pdb'%(attempts-1),'w'))
-        #    minimized = True
-        #except Exception as e:
-        #    logging.info(e)
+        attempts += 1
+        try:
+            # running minimization
+            simulation.minimizeEnergy(maxIterations=max_iterations,tolerance=tolerance)
+            
+            # return energies and positions
+            state = simulation.context.getState(getEnergy=True, getPositions=True)
+            efinal = state.getPotentialEnergy().value_in_unit(energy_units)
+            positions = state.getPositions(asNumpy=True).value_in_unit(length_units)
+            logger.info(f'        Final energy: {efinal} kcal mol-1')
+             
+            # saving the final structure to a pdb
+            with open(out_file_name + '_min_%02d.pdb'%(attempts-1),'w') as out_file:
+                openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=out_file)
+            minimized = True
+        except Exception as e:
+            logger.info(e)
     
     # update for more energy logging
     # calculate rmsd between pos and posinit
@@ -234,11 +238,13 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
     
     if not minimized:
         raise ValueError(f"Minimization failed after {fail_attempts} attempts.")
-
+    
+    return out_file_name + '_min_%02d.pdb'%(attempts-1)
 
 def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residues = []):
     """
     """
+    full_start_time = time.time()
     path_breakdown = pdb_file.split('/')
     path = pdb_file.split(path_breakdown[-1])[0]   # grabbing working dir path by removing the file name
     model_descriptor = path_breakdown[-1].split('unrelaxed_')[-1][:-4]   # grabbing a good file naming descriptor 
@@ -256,9 +262,16 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
 
     # run the minimization protocol and output minimized structure
     start = time.time()
-    run_minimization(simulation, path + model_descriptor + '_min.pdb', logger = min_logger)
+    final_pdb = run_minimization(simulation, path + model_descriptor, logger = min_logger)
     min_logger.info(f'Finished running the minimization calculation; took {time.time() - start} secs.')
 
+    for handle in min_logger.handlers:
+        handle.flush()
+        handle.close()
+        min_logger.removeHandler(handle)
+
+    return full_start_time, time.time(), final_pdb
+    
 
 #######################################
 ### MAIN
@@ -306,12 +319,8 @@ if __name__ == '__main__':
     ac = as_completed(task_futures)
     for i, finished_task in enumerate(ac):
         start_time, stop_time, protein = finished_task.result()
-        with open('out_%d.txt'%(i),'a') as out:
-            out.write('total time spent on this: %f'%(stop_time-start_time))
-
         main_logger.info(f'{protein} processed in {(stop_time - start_time) / 60} minutes.')
         main_logger.info(f'{len(proteins) - i - 1} proteins left')
-
 
     # shutting down the cluster
     main_logger.info(f'Shutting down the cluster')
@@ -338,5 +347,6 @@ if __name__ == '__main__':
     #    main_logger.info(f'Finished with {get_num_workers(client)} dask workers still active.')
 
     #main_logger.info('Done.')
+
 
 

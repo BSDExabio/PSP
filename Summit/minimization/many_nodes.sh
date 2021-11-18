@@ -7,7 +7,7 @@
 #BSUB -P BIP198
 #BSUB -W 00:30
 #BSUB -q debug
-#BSUB -nnodes 1
+#BSUB -nnodes 2
 #BSUB -alloc_flags gpudefault
 #BSUB -J af_min
 #BSUB -o testing.%J.out
