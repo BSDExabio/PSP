@@ -2,8 +2,6 @@
 #
 # Batch submission script for small alphafoldtaskmgr run on Summit
 #
-# Support issue-9 on the kanban board.
-#
 #BSUB -P BIF135
 #BSUB -W 06:00
 #BSUB -nnodes 91
