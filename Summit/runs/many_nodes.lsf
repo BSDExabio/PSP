@@ -2,24 +2,22 @@
 #
 # Batch submission script for small alphafoldtaskmgr run on Summit
 #
-# Support issue-8 on the kanban board.
-#
 #BSUB -P BIF135
-#BSUB -W 02:00
+#BSUB -W 06:00
 #BSUB -nnodes 91
-#BSUB -J issue-8
+#BSUB -J issue-9
 #BSUB -o out.alphafold.%J
 #BSUB -e err.alphafold.%J
 
 
 # Where we will run this script and expect output
-RUN_DIR=/gpfs/alpine/bip198/scratch/mcoletti/runs/issue-8
+RUN_DIR=/gpfs/alpine/bip198/scratch/mcoletti/runs/issue-9
 
 # dask file for scheduler and workers to find each other
 SCHEDULER_FILE=${RUN_DIR}/scheduler_file.json
 
 # Get common setup for alphafoldtaskmgr runs
-source /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/issue-8/common.env
+source /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/common.env
 
 # Just in case I forgot to make the durn thing ahead of time.  :P
 mkdir -p $RUN_DIR
@@ -60,7 +58,7 @@ jsrun -h $RUN_DIR --smpiargs="off" --nrs $NUM_NODES -e individual \
 --stdio_stderr ${RUN_DIR}/worker_error.%j.%h.%p \
 --tasks_per_rs 1 --cpu_per_rs 39 --gpu_per_rs 6 --rs_per_host 1 -b none \
 --latency_priority gpu-cpu \
-/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/issue-8/spawn_worker.sh &
+/gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/issue-9/spawn_worker.sh &
 
 echo Waiting for workers
 
@@ -74,8 +72,9 @@ jsrun  --smpiargs="off" -e individual \
 --stdio_stderr ${RUN_DIR}/alphafold_stderr.%j.%h.%p \
 --nrs 1 --cpu_per_rs 1 --gpu_per_rs 0 --rs_per_host 1 --latency_priority cpu-cpu \
 -b none \
-python3 -u /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/src/alphataskmgr/alphafoldtaskmgr.py \
+/gpfs/alpine/bip198/proj-shared/mcoletti/conda/bin/python3 -u /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/src/alphataskmgr/alphafoldtaskmgr.py \
 --scheduler-file $SCHEDULER_FILE \
+--timings-file ${RUN_DIR}/${LSB_JOBID}_timings.csv \
 --input-file  /gpfs/alpine/world-shared/bif135/desulfovibrio/de_hildenborough.lst
 
 

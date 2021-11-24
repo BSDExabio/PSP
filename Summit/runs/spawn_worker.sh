@@ -9,10 +9,10 @@
 #
 
 # Get common setup for alphafoldtaskmgr runs
-source /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/issue-6/common.env
+source /gpfs/alpine/bip198/proj-shared/mcoletti/PSP/Summit/runs/common.env
 
 # Where we will run this script and expect output
-RUN_DIR=/gpfs/alpine/bip198/scratch/mcoletti/runs/issue-6
+RUN_DIR=/gpfs/alpine/bip198/scratch/mcoletti/runs/issue-9
 
 # dask file for scheduler and workers to find each other
 SCHEDULER_FILE=${RUN_DIR}/scheduler_file.json
@@ -22,10 +22,9 @@ echo "spawn worker python:" $(which python)
 # Grab the device numbers for all the local GPUs
 gpus=$(nvidia-smi --list-gpus | cut -c5)
 
-
 for gpu in $gpus; do
-    env OMP_NUM_THREADS=4 SINGULARITYENV_SDL_VIDEODRIVER=offscreen CUDA_VISIBLE_DEVICES=$gpu \
-      CARLA_PORT=$port dask-worker --nthreads 1 --nprocs 1 --interface ib0 \
+    env CUDA_VISIBLE_DEVICES=$gpu \
+     dask-worker --nthreads 1 --nprocs 1 --interface ib0 \
       --no-dashboard --no-nanny --reconnect --scheduler-file ${SCHEDULER_FILE} &
 done
 
