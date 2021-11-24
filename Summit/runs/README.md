@@ -14,9 +14,9 @@ Summit.
 * `test-env-file` contains environment variables to tweak memory settings; used
   in singularity invocations
 
-## 
+## alphataskmgr support
 
-## `issue-N` directories
-
-These directories correspond to support scripts for corresponding issues on
-our [kanban board](https://github.com/BSDExabio/PSP/projects/1)
+* `many_nodes.lsf` -- LSF script for alphataskmgr on Summit
+* `common.env` -- common environment variables for `many_nodes.lsf`
+* `spawn_worker.sh` -- shell script invoked by `many_nodes.lsf` to assigned 
+  `dask` workers specific GPUs
