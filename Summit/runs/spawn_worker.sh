@@ -22,10 +22,9 @@ echo "spawn worker python:" $(which python)
 # Grab the device numbers for all the local GPUs
 gpus=$(nvidia-smi --list-gpus | cut -c5)
 
-
 for gpu in $gpus; do
-    env OMP_NUM_THREADS=4 SINGULARITYENV_SDL_VIDEODRIVER=offscreen CUDA_VISIBLE_DEVICES=$gpu \
-      CARLA_PORT=$port dask-worker --nthreads 1 --nprocs 1 --interface ib0 \
+    env CUDA_VISIBLE_DEVICES=$gpu \
+     dask-worker --nthreads 1 --nprocs 1 --interface ib0 \
       --no-dashboard --no-nanny --reconnect --scheduler-file ${SCHEDULER_FILE} &
 done
 
