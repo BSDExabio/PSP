@@ -27,24 +27,7 @@ import argparse
 import logging
 
 import pdbfixer
-from simtk import openmm
-from simtk import unit
-from simtk.openmm import app as openmm_app
-from simtk.openmm.app.internal.pdbstructure import PdbStructure
-
-#from rich.console import Console
-#from rich.table import Table
-#from rich import print
-#from rich import pretty
-#pretty.install()
-#from rich.traceback import install
-#install()
-#from rich.logging import RichHandler
-#rich_handler = RichHandler(rich_tracebacks=True,
-#                           markup=True)
-#logging.basicConfig(level='INFO', format='%(message)s',
-#                    datefmt="[%Y/%m/%d %H:%M:%S]",
-#                    handlers=[rich_handler])
+import openmm
 
 from distributed import Client, as_completed
 
@@ -68,6 +51,14 @@ def setup_logger(name, log_file, level=logging.INFO):
     logger.addHandler(handler)
 
     return logger
+
+
+def clean_logger(logger):
+    """To cleanup the logger instances once we are done with them"""
+    for handle in logger.handlers:
+        handle.flush()
+        handle.close()
+        logger.removeHandler(handle)
 
 
 def get_num_workers(client):
@@ -99,7 +90,7 @@ def read_input_file(input_file):
         return [x.rstrip() for x in file_input]
 
 
-def will_restrain(atom: openmm_app.Atom, rset: str) -> bool:
+def will_restrain(atom: openmm.app.topology.Atom, rset: str) -> bool:
   """Returns True if the atom will be restrained by the given restraint set."""
 
   if rset == "non_hydrogen":
@@ -110,8 +101,8 @@ def will_restrain(atom: openmm_app.Atom, rset: str) -> bool:
 
 def _add_restraints(
     system,             #system: openmm.System,
-    reference_pdb,      #reference_pdb: openmm_app.PDBFile,
-    stiffness,          #stiffness: unit.Unit,
+    reference_pdb,      #reference_pdb: openmm.PDBFile,
+    stiffness,          #stiffness: openmm.unit.Unit,
     rset,               #rset: str,
     exclude_residues):  #exclude_residues: Sequence[int]):
   """Adds a harmonic potential that restrains the end-to-end distance."""
@@ -144,27 +135,27 @@ def fix_protein(input_pdb_file, output_pdb_file = 'protonated.pdb', logger = Non
     fixer.addMissingHydrogens()
     logger.info(f'        Saving {output_pdb_file}.')
     with open(output_pdb_file,'w') as save_file:
-        openmm_app.pdbfile.PDBFile.writeFile(fixer.topology,fixer.positions,file=save_file)
+        openmm.app.pdbfile.PDBFile.writeFile(fixer.topology,fixer.positions,file=save_file)
     
     return output_pdb_file
 
 
-def prep_protein(pdb_file, restraint_set = "", exclude_residues = [], forcefield = "amber99sb.xml", restraint_stiffness = 10.0, platform = 'CUDA', energy_units = unit.kilocalories_per_mole, length_units = unit.angstroms, logger = None):
+def prep_protein(pdb_file, restraint_set = "", exclude_residues = [], forcefield = "amber99sb.xml", restraint_stiffness = 10.0, platform = 'CUDA', energy_units = openmm.unit.kilocalories_per_mole, length_units = openmm.unit.angstroms, logger = None):
     """
     """
     
     logger.info(f'Preparing the simulation engine:')
     logger.info(f'        Loading {pdb_file} to create the OpenMM simulation object.')
     # load pdb file into an openmm Topology and coordinates object
-    pdb = openmm_app.PDBFile(pdb_file)
+    pdb = openmm.app.pdbfile.PDBFile(pdb_file)
 
     # set the FF and constraints objects
     logger.info(f'        Using {forcefield}.')
-    force_field = openmm_app.ForceField(forcefield)
+    force_field = openmm.app.forcefield.ForceField(forcefield)
     
     # prepare the restraints/constraints for the system
     logger.info(f'        Building HBond constraints as well as restraints on {restraint_set}.')
-    constraints = openmm_app.HBonds # NOTE: check that bond lengths are good to begin with...
+    constraints = openmm.app.HBonds # NOTE: check that bond lengths are good to begin with...
     system = force_field.createSystem(pdb.topology, constraints=constraints)
     # prep and add restraints to the simulation system
     stiffness = restraint_stiffness * energy_units / (length_units**2)
@@ -178,14 +169,14 @@ def prep_protein(pdb_file, restraint_set = "", exclude_residues = [], forcefield
     # determine what hardware will be used to perform the calculations
     platform = openmm.Platform.getPlatformByName(platform)
     # prep the simulation object
-    simulation = openmm_app.Simulation(pdb.topology, system, integrator, platform)
+    simulation = openmm.app.Simulation(pdb.topology, system, integrator, platform)
     # set the atom positions for the simulation's system's topology
     simulation.context.setPositions(pdb.positions)
     
     return simulation
 
 
-def run_minimization(simulation,out_file_name,max_iterations = 0,energy_tolerance = 2.39,fail_attempts=100,energy_units = unit.kilocalories_per_mole,length_units = unit.angstroms, logger = None):
+def run_minimization(simulation,out_file_name,max_iterations = 0,energy_tolerance = 2.39,fail_attempts=100,energy_units = openmm.unit.kilocalories_per_mole,length_units = openmm.unit.angstroms, logger = None):
     """
     """
     tolerance = energy_tolerance * energy_units
@@ -211,7 +202,7 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
         #logger.info(f'        Final energy: {efinal} kcal mol-1')
         #
         ## saving the final structure to a pdb
-        #openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=open(out_file_name + '_%02d.pdb'%(attempts-1),'w'))
+        #openmm.app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=open(out_file_name + '_%02d.pdb'%(attempts-1),'w'))
         #minimized = True
         
         attempts += 1
@@ -227,7 +218,7 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
              
             # saving the final structure to a pdb
             with open(out_file_name + '_min_%02d.pdb'%(attempts-1),'w') as out_file:
-                openmm_app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=out_file)
+                openmm.app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=out_file)
             minimized = True
         except Exception as e:
             logger.info(e)
@@ -241,6 +232,7 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
     
     return out_file_name + '_min_%02d.pdb'%(attempts-1)
 
+
 def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residues = []):
     """
     """
@@ -251,24 +243,39 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     min_logger = setup_logger('minimization_logger', path + model_descriptor + '.log')  # setting up the individual run's logging file
     
     # load pdb file and add missing atoms (mainly hydrogens)
-    start = time.time()
-    pdb_file = fix_protein(pdb_file,output_pdb_file = path + model_descriptor + '_protonated.pdb', logger = min_logger)
-    min_logger.info(f'Finished preparing the protein model for minimization; took {time.time() - start} secs.')
+    try:
+        start = time.time()
+        pdb_file = fix_protein(pdb_file,output_pdb_file = path + model_descriptor + '_protonated.pdb', logger = min_logger)
+        min_logger.info(f'Finished preparing the protein model for minimization; took {time.time() - start} secs.')
+    except:
+        min_logger.exception(f"Preparation of the protein failed. Killing this worker's task.")
+        clean_logger(min_logger)
+        
+        return full_start_time, time.time(), '{pdb_file} failed on protein preparation.'
 
     # send protein into an OpenMM pipeline, preparing the protein for a simulation
-    start = time.time()
-    simulation = prep_protein(pdb_file,restraint_set, exclude_residues = relax_exclude_residues, logger = min_logger)
-    min_logger.info(f'Finished preparing the simulation engine; took {time.time() - start} secs.')
+    try:
+        start = time.time()
+        simulation = prep_protein(pdb_file,restraint_set, exclude_residues = relax_exclude_residues, logger = min_logger)
+        min_logger.info(f'Finished preparing the simulation engine; took {time.time() - start} secs.')
+    except:
+        min_logger.exception(f"Preparation of the simulation engine failed. Killing this worker's task.")
+        clean_logger(min_logger)
+        
+        return full_start_time, time.time(), '{pdb_file} failed on simulation preparation.'
 
     # run the minimization protocol and output minimized structure
-    start = time.time()
-    final_pdb = run_minimization(simulation, path + model_descriptor, logger = min_logger)
-    min_logger.info(f'Finished running the minimization calculation; took {time.time() - start} secs.')
-
-    for handle in min_logger.handlers:
-        handle.flush()
-        handle.close()
-        min_logger.removeHandler(handle)
+    try:
+        start = time.time()
+        final_pdb = run_minimization(simulation, path + model_descriptor, logger = min_logger)
+        min_logger.info(f'Finished running the minimization calculation; took {time.time() - start} secs.')
+    except:
+        min_logger.exception(f"Simulation failed. Killing this worker's task.")
+        clean_logger(min_logger)
+        
+        return full_start_time, time.time(), '{pdb_file} failed on simulation.'
+        
+    clean_logger(min_logger)
 
     return full_start_time, time.time(), final_pdb
     
@@ -311,42 +318,23 @@ if __name__ == '__main__':
     main_logger.info(f'{connected_workers} workers connected')
 
     # do the thing.
-    #task_futures = client.map(run_hello_world,list(range(NUM_WORKERS)))
-    #task_futures = client.map(run_minimization,proteins)
     task_futures = client.map(run_pipeline,proteins, restraint_set = RESTRAINT_SET, relax_exclude_residues = RELAX_EXCLUDE_RESIDUES) 
 
     # gather results
     ac = as_completed(task_futures)
     for i, finished_task in enumerate(ac):
         start_time, stop_time, protein = finished_task.result()
-        main_logger.info(f'{protein} processed in {(stop_time - start_time) / 60} minutes.')
-        main_logger.info(f'{len(proteins) - i - 1} proteins left')
+        if 'failed' in protein:
+            main_logger.info(f'{protein}')
+            main_logger.info(f'{len(proteins) - i - 1} proteins left')
+        else:
+            main_logger.info(f'{protein} processed in {(stop_time - start_time) / 60.} minutes.')
+            main_logger.info(f'{len(proteins) - i - 1} proteins left')
 
     # shutting down the cluster
     main_logger.info(f'Shutting down the cluster')
     workers_list = list(workers_info)
     disconnect(client,workers_list)
     main_logger.info('Done.')
-
-
-    #with Client(scheduler_file=args.scheduler_file,timeout=args.scheduler_timeout,name='energymintaskmgr') as client:
-    #    main_logger.info(f'Starting with {get_num_workers(client)} dask workers.')
-    #    # setting the client task
-    #    try:
-    #        task_futures = client.map(run_minimization, proteins)
-    #    except:
-    #        print('something went wrong with the task_futures lines')
-    #    
-    #    # pushing tasks and watching them complete
-    #    ac = as_completed(task_futures)
-    #    for i, finished_task in enumerate(ac):
-    #        start_time, stop_time, protein = finished_task.result()
-    #        main_logger.info(f'{protein} processed in {(stop_time - start_time) / 60} minutes.')
-    #        main_logger.info(f'{len(proteins) - i - 1} proteins left')
-    #    
-    #    main_logger.info(f'Finished with {get_num_workers(client)} dask workers still active.')
-
-    #main_logger.info('Done.')
-
-
+    clean_logger(main_logger)
 

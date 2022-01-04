@@ -4,14 +4,16 @@
 #
 # Support issue-14 branch on PSP git repository
 #
-#BSUB -P BIP198
-#BSUB -W 00:30
-#BSUB -q debug
-#BSUB -nnodes 2
+##BSUB -P BIP198
+#BSUB -P BIF135
+#BSUB -W 2:00
+#BSUB -nnodes 8
 #BSUB -alloc_flags gpudefault
 #BSUB -J af_min
-#BSUB -o testing.%J.out
-#BSUB -e testing.%J.err
+#BSUB -o dsv_afold_mod.%J.out
+#BSUB -e dsv_afold_mod.%J.err
+#BSUB -N
+#BSUB -B
 
 # set up the modules and python environment
 module load cuda/10.2.89 gcc/8.1.1
@@ -35,7 +37,7 @@ unset __conda_setup
 conda activate openmm
 
 # set active directories
-RUN_DIR=/gpfs/alpine/proj-shared/bip198/minimize_af/WP_010940344.1/test
+RUN_DIR=/gpfs/alpine/bip198/proj-shared/minimize_af/script_home/test6
 SCHEDULER_FILE=${RUN_DIR}/scheduler_file.json
 
 if [ ! -d "$SCHEDULER_DIR" ]
@@ -78,7 +80,9 @@ echo Waiting for workers
 sleep 30
 
 # Run the client task manager; like the scheduler, this just needs a single core to noodle away on, which python takes naturally (no jsrun call needed)
-python3 ${RUN_DIR}/minimization_taskmgr.py --scheduler-file $SCHEDULER_FILE --input-file ${RUN_DIR}/input_file.lst 1> ${RUN_DIR}/tskmgr.stdout 2> ${RUN_DIR}/tskmgr.stderr
+jsrun --smpiargs="off" --nrs 1 --rs_per_host 1 --tasks_per_rs 1 --cpu_per_rs 1 --gpu_per_rs 0 --latency_priority cpu-cpu \
+	--stdio_stdout ${RUN_DIR}/tskmgr.stdout --stdio_stderr ${RUN_DIR}/tskmgr.stderr \
+	python3 /gpfs/alpine/bip198/proj-shared/minimize_af/script_home/minimization_taskmgr.py --scheduler-file $SCHEDULER_FILE --input-file /gpfs/alpine/bip198/proj-shared/minimize_af/script_home/structures.lst
 
 # We're done so kill the scheduler and worker processes
 jskill all
