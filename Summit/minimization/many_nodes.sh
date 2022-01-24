@@ -10,8 +10,8 @@
 #BSUB -nnodes 8
 #BSUB -alloc_flags gpudefault
 #BSUB -J af_min
-#BSUB -o dsv_afold_mod.%J.out
-#BSUB -e dsv_afold_mod.%J.err
+#BSUB -o afold_min.%J.out
+#BSUB -e afold_min.%J.err
 #BSUB -N
 #BSUB -B
 
@@ -37,7 +37,7 @@ unset __conda_setup
 conda activate openmm
 
 # set active directories
-RUN_DIR=/gpfs/alpine/bip198/proj-shared/minimize_af/script_home/test6
+RUN_DIR=/gpfs/alpine/bip198/proj-shared/minimize_af/script_home/dvh_af2c_mono
 SCHEDULER_FILE=${RUN_DIR}/scheduler_file.json
 
 if [ ! -d "$SCHEDULER_DIR" ]
@@ -82,7 +82,7 @@ sleep 30
 # Run the client task manager; like the scheduler, this just needs a single core to noodle away on, which python takes naturally (no jsrun call needed)
 jsrun --smpiargs="off" --nrs 1 --rs_per_host 1 --tasks_per_rs 1 --cpu_per_rs 1 --gpu_per_rs 0 --latency_priority cpu-cpu \
 	--stdio_stdout ${RUN_DIR}/tskmgr.stdout --stdio_stderr ${RUN_DIR}/tskmgr.stderr \
-	python3 /gpfs/alpine/bip198/proj-shared/minimize_af/script_home/minimization_taskmgr.py --scheduler-file $SCHEDULER_FILE --input-file /gpfs/alpine/bip198/proj-shared/minimize_af/script_home/structures.lst
+	python3 /gpfs/alpine/bip198/proj-shared/minimize_af/script_home/minimization_taskmgr.py --scheduler-file $SCHEDULER_FILE --input-file /gpfs/alpine/bip198/proj-shared/minimize_af/script_home/structure_list.lst --timings-file ${RUN_DIR}/timings.csv
 
 # We're done so kill the scheduler and worker processes
 jskill all

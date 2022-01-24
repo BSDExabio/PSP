@@ -25,11 +25,15 @@ import subprocess
 import time
 import argparse
 import logging
+import platform
+import os
+import stat
 
 import pdbfixer
 import openmm
+import csv
 
-from distributed import Client, as_completed
+from distributed import Client, as_completed, get_worker
 
 # NOTE: hard coded variables for the moment.
 RESTRAINT_SET = "non_hydrogen"  # or "c_alpha"
@@ -122,6 +126,23 @@ def _add_restraints(
   system.addForce(force)
 
 
+def append_timings(csv_writer, hostname, worker_id, start_time, stop_time,
+                   protein):
+    """ append the protein timings to the CSV timings file
+    :param csv_writer: CSV to which to append timings
+    :param hostname: on which the processing took place
+    :param worker_id: of the dask worker that did the processing
+    :param start_time: start time in *NIX epoch seconds
+    :param stop_time: stop time in same units
+    :param protein: that was processed
+    """
+    csv_writer.writerow({'hostname'  : hostname,
+                         'worker_id' : worker_id,
+                         'start_time': start_time,
+                         'stop_time' : stop_time,
+                         'protein'   : protein})
+
+
 def fix_protein(input_pdb_file, output_pdb_file = 'protonated.pdb', logger = None):
     """
     """
@@ -137,6 +158,8 @@ def fix_protein(input_pdb_file, output_pdb_file = 'protonated.pdb', logger = Non
     with open(output_pdb_file,'w') as save_file:
         openmm.app.pdbfile.PDBFile.writeFile(fixer.topology,fixer.positions,file=save_file)
     
+    os.chmod(output_pdb_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
+
     return output_pdb_file
 
 
@@ -219,6 +242,7 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
             # saving the final structure to a pdb
             with open(out_file_name + '_min_%02d.pdb'%(attempts-1),'w') as out_file:
                 openmm.app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=out_file)
+                os.chmod(out_file_name + '_min_%02d.pdb'%(attempts-1), stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
             minimized = True
         except Exception as e:
             logger.info(e)
@@ -239,8 +263,8 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     full_start_time = time.time()
     path_breakdown = pdb_file.split('/')
     path = pdb_file.split(path_breakdown[-1])[0]   # grabbing working dir path by removing the file name
-    model_descriptor = path_breakdown[-1].split('unrelaxed_')[-1][:-4]   # grabbing a good file naming descriptor 
-    min_logger = setup_logger('minimization_logger', path + model_descriptor + '.log')  # setting up the individual run's logging file
+    model_descriptor = path_breakdown[-1][:-4]     # grabbing a good file naming descriptor 
+    min_logger = setup_logger('minimization_logger', path + model_descriptor + '_min.log')  # setting up the individual run's logging file
     
     # load pdb file and add missing atoms (mainly hydrogens)
     try:
@@ -250,8 +274,9 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     except:
         min_logger.exception(f"Preparation of the protein failed. Killing this worker's task.")
         clean_logger(min_logger)
+        os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
         
-        return full_start_time, time.time(), '{pdb_file} failed on protein preparation.'
+        return full_start_time, time.time(), f'{pdb_file} failed on protein preparation.'
 
     # send protein into an OpenMM pipeline, preparing the protein for a simulation
     try:
@@ -261,8 +286,9 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     except:
         min_logger.exception(f"Preparation of the simulation engine failed. Killing this worker's task.")
         clean_logger(min_logger)
+        os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
         
-        return full_start_time, time.time(), '{pdb_file} failed on simulation preparation.'
+        return full_start_time, time.time(), f'{pdb_file} failed on simulation preparation.'
 
     # run the minimization protocol and output minimized structure
     try:
@@ -272,12 +298,15 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     except:
         min_logger.exception(f"Simulation failed. Killing this worker's task.")
         clean_logger(min_logger)
+        os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
         
-        return full_start_time, time.time(), '{pdb_file} failed on simulation.'
+        return full_start_time, time.time(), f'{pdb_file} failed on simulation.'
         
     clean_logger(min_logger)
+    os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
 
-    return full_start_time, time.time(), final_pdb
+    worker = get_worker()
+    return platform.node(), worker.id, full_start_time, time.time(), final_pdb
     
 
 #######################################
@@ -290,11 +319,12 @@ if __name__ == '__main__':
     parser.add_argument('--scheduler-timeout', '-t', default=5000, type=int, help='dask scheduler timeout')
     parser.add_argument('--scheduler-file', '-s', required=True, help='dask scheduler file')
     parser.add_argument('--input-file', '-i', required=True, help='file containing proteins to process')
+    parser.add_argument('--timings-file', '-ts', required=True, help='CSV file for protein processing timings')
     args = parser.parse_args()
 
     # setting up the main logger
     main_logger = setup_logger('tskmgr_logger','tskmgr.log')
-    main_logger.info('Starting dask pipeline and setting up logging.')
+    main_logger.info(f'Starting dask pipeline and setting up logging. Time: {time.time()}')
     main_logger.info(f'Scheduler file: {args.scheduler_file}')
     main_logger.info(f'Scheduler timeout: {args.scheduler_timeout}')
     main_logger.info(f'Input file: {args.input_file}')
@@ -302,6 +332,11 @@ if __name__ == '__main__':
     # create list of strings pointing to pdb files to be energy minimized
     proteins = read_input_file(args.input_file)
     main_logger.info(f'Read {len(proteins)} proteins to process.')
+
+    # setting up timing log file
+    timings_file = open(args.timings_file, 'w')
+    timings_csv = csv.DictWriter(timings_file,['hostname','worker_id','start_time','stop_time','protein'])
+    timings_csv.writeheader()
 
     # starting dask client
     client = Client(scheduler_file=args.scheduler_file,timeout=args.scheduler_timeout,name='energymintaskmgr')
@@ -323,18 +358,22 @@ if __name__ == '__main__':
     # gather results
     ac = as_completed(task_futures)
     for i, finished_task in enumerate(ac):
-        start_time, stop_time, protein = finished_task.result()
+        hostname, worker_id, start_time, stop_time, protein = finished_task.result()
         if 'failed' in protein:
             main_logger.info(f'{protein}')
             main_logger.info(f'{len(proteins) - i - 1} proteins left')
+            append_timings(timings_csv,hostname,worker_id,start_time,stop_time,protein)
         else:
             main_logger.info(f'{protein} processed in {(stop_time - start_time) / 60.} minutes.')
             main_logger.info(f'{len(proteins) - i - 1} proteins left')
+            append_timings(timings_csv,hostname,worker_id,start_time,stop_time,protein)
 
-    # shutting down the cluster
-    main_logger.info(f'Shutting down the cluster')
+    # closing log files and shutting down the cluster
+    timings_file.close()
+    os.chmod(args.timings_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
+    main_logger.info(f'Done. Shutting down the cluster. Time: {time.time()}')
+    clean_logger(main_logger)
+    os.chmod('tskmgr.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
     workers_list = list(workers_info)
     disconnect(client,workers_list)
-    main_logger.info('Done.')
-    clean_logger(main_logger)
 
