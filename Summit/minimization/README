@@ -28,20 +28,15 @@ conda activate openmm
 # Install the 'openmm' 7.4.0 dev package for ppc64le into this environment
 conda install --yes -c omnia-dev/label/cuda101 openmm
 conda install pdbfixer dask
-```
-
-## USAGE: 
-Need to work on the code to implement with dask so that many GPUs across many
-nodes can be used. 
-
-```bash
 # start an interactive job on a single node of SUMMIT
 bsub -W 2:00 -nnodes 1 -P bip198 -alloc_flags gpudefault -Is /bin/bash
 # test installation of OpenMM
 python -m simtk.testInstallation
-# run the minimization script on a single structure; changes to come
-jsrun --smpiargs="none" -n 1 -a 1 -c 1 -g 1 python3 single_minimization.py
-/path/to/structure/to/be/minimized/file.pdb 
+```
 
+## USAGE: 
+
+```bash
+bsub many_nodes.sh	# after editing the bsub lines
 ```
 
