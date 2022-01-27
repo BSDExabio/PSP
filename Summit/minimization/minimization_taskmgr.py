@@ -21,7 +21,6 @@
 
 """
 
-import subprocess
 import time
 import argparse
 import logging
@@ -47,7 +46,7 @@ RELAX_EXCLUDE_RESIDUES = []     # fed to openmm minimizeEnergy; left empty by de
 def setup_logger(name, log_file, level=logging.INFO):
     """To setup as many loggers as you want"""
     formatter = logging.Formatter('%(asctime)s      %(levelname)s       %(message)s')
-    handler = logging.FileHandler(log_file)        
+    handler = logging.FileHandler(log_file)
     handler.setFormatter(formatter)
 
     logger = logging.getLogger(name)
@@ -215,19 +214,6 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
     
     # attempt to minimize the structure
     while not minimized and attempts < fail_attempts:
-        ## running minimization
-        #simulation.minimizeEnergy(maxIterations=max_iterations,tolerance=tolerance)
-        #
-        ## return energies and positions
-        #state = simulation.context.getState(getEnergy=True, getPositions=True)
-        #efinal = state.getPotentialEnergy().value_in_unit(energy_units)
-        #positions = state.getPositions(asNumpy=True).value_in_unit(length_units)
-        #logger.info(f'        Final energy: {efinal} kcal mol-1')
-        #
-        ## saving the final structure to a pdb
-        #openmm.app.pdbfile.PDBFile.writeFile(simulation.topology,positions,file=open(out_file_name + '_%02d.pdb'%(attempts-1),'w'))
-        #minimized = True
-        
         attempts += 1
         try:
             # running minimization
@@ -246,9 +232,6 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
             minimized = True
         except Exception as e:
             logger.info(e)
-    
-    # update for more energy logging
-    # calculate rmsd between pos and posinit
     logger.info(f"        dE = {efinal - einit} kcal mol^{-1}")
     
     if not minimized:
@@ -265,7 +248,9 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     path = pdb_file.split(path_breakdown[-1])[0]   # grabbing working dir path by removing the file name
     model_descriptor = path_breakdown[-1][:-4]     # grabbing a good file naming descriptor 
     min_logger = setup_logger('minimization_logger', path + model_descriptor + '_min.log')  # setting up the individual run's logging file
-    
+   
+    worker = get_worker()
+
     # load pdb file and add missing atoms (mainly hydrogens)
     try:
         start = time.time()
@@ -276,7 +261,7 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
         clean_logger(min_logger)
         os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
         
-        return full_start_time, time.time(), f'{pdb_file} failed on protein preparation.'
+        return platform.node(), worker.id, full_start_time, time.time(), f'{pdb_file} failed on protein preparation.'
 
     # send protein into an OpenMM pipeline, preparing the protein for a simulation
     try:
@@ -288,7 +273,7 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
         clean_logger(min_logger)
         os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
         
-        return full_start_time, time.time(), f'{pdb_file} failed on simulation preparation.'
+        return platform.node(), worker.id, full_start_time, time.time(), f'{pdb_file} failed on simulation preparation.'
 
     # run the minimization protocol and output minimized structure
     try:
@@ -300,7 +285,7 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
         clean_logger(min_logger)
         os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
         
-        return full_start_time, time.time(), f'{pdb_file} failed on simulation.'
+        return platform.node(), worker.id, full_start_time, time.time(), f'{pdb_file} failed on simulation.'
         
     clean_logger(min_logger)
     os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
