@@ -251,6 +251,12 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
    
     worker = get_worker()
 
+    try:
+        os.mkdir(path+'/relaxation/')
+        path = path+'/relaxation/'
+    except FileExistsError:
+        path = path+'/relaxation/'
+
     # load pdb file and add missing atoms (mainly hydrogens)
     try:
         start = time.time()
