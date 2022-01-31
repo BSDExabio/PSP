@@ -27,6 +27,7 @@ import logging
 import platform
 import os
 import stat
+import gc
 
 import pdbfixer
 import openmm
@@ -142,41 +143,41 @@ def append_timings(csv_writer, hostname, worker_id, start_time, stop_time,
                          'protein'   : protein})
 
 
-def fix_protein(input_pdb_file, output_pdb_file = 'protonated.pdb', logger = None):
+def fix_protein(input_pdb_file, output_pdb_file = 'protonated.pdb'):
     """
     """
-    logger.info(f'Checking model for any required fixes (missing hydrogens and other atoms, etc).')
-    logger.info(f'        Loading {input_pdb_file} to check for missing atoms and add hydrogens.')
-    fixer = pdbfixer.PDBFixer(pdbfile=open(input_pdb_file,'r'))
+    logger_string = f'Checking model for any required fixes (missing hydrogens and other atoms, etc).\n        Loading {input_pdb_file} to check for missing atoms and add hydrogens.'
     
+    fixer = pdbfixer.PDBFixer(pdbfile=open(input_pdb_file,'r'))
     fixer.findMissingResidues()
     fixer.findMissingAtoms()
     fixer.addMissingAtoms(seed=0)
     fixer.addMissingHydrogens()
-    logger.info(f'        Saving {output_pdb_file}.')
+    logger_string += f'        Saving {output_pdb_file}.\n'
     with open(output_pdb_file,'w') as save_file:
         openmm.app.pdbfile.PDBFile.writeFile(fixer.topology,fixer.positions,file=save_file)
     
     os.chmod(output_pdb_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
 
-    return output_pdb_file
+    del fixer
+
+    return output_pdb_file, logger_string
 
 
-def prep_protein(pdb_file, restraint_set = "", exclude_residues = [], forcefield = "amber99sb.xml", restraint_stiffness = 10.0, platform = 'CUDA', energy_units = openmm.unit.kilocalories_per_mole, length_units = openmm.unit.angstroms, logger = None):
+def prep_protein(pdb_file, restraint_set = "", exclude_residues = [], forcefield = "amber99sb.xml", restraint_stiffness = 10.0, platform = 'CUDA', energy_units = openmm.unit.kilocalories_per_mole, length_units = openmm.unit.angstroms):
     """
     """
-    
-    logger.info(f'Preparing the simulation engine:')
-    logger.info(f'        Loading {pdb_file} to create the OpenMM simulation object.')
+   
+    logger_string += f'Preparing the simulation engine:\n        Loading {pdb_file} to create the OpenMM simulation object.\n'
     # load pdb file into an openmm Topology and coordinates object
     pdb = openmm.app.pdbfile.PDBFile(pdb_file)
 
     # set the FF and constraints objects
-    logger.info(f'        Using {forcefield}.')
+    logger_string += f'        Using {forcefield}.\n'
     force_field = openmm.app.forcefield.ForceField(forcefield)
     
     # prepare the restraints/constraints for the system
-    logger.info(f'        Building HBond constraints as well as restraints on {restraint_set}.')
+    logger_string += f'        Building HBond constraints as well as restraints on {restraint_set}.\n'
     constraints = openmm.app.HBonds # NOTE: check that bond lengths are good to begin with...
     system = force_field.createSystem(pdb.topology, constraints=constraints)
     # prep and add restraints to the simulation system
@@ -184,8 +185,8 @@ def prep_protein(pdb_file, restraint_set = "", exclude_residues = [], forcefield
     if stiffness > 0. * energy_units / (length_units**2):
         # code up the _add_restraints function
         _add_restraints(system, pdb, stiffness, restraint_set, exclude_residues)
-    
-    logger.info(f'        Creating the OpenMM simulation object.')
+   
+    logger_string += f'        Creating the OpenMM simulation object.\n'
     # required to set this for prepping the simulation object
     integrator = openmm.LangevinIntegrator(0, 0.01, 0.0)    # hard set because we won't be using it; still necessary to define for the creation of the simulation object
     # determine what hardware will be used to perform the calculations
@@ -194,23 +195,31 @@ def prep_protein(pdb_file, restraint_set = "", exclude_residues = [], forcefield
     simulation = openmm.app.Simulation(pdb.topology, system, integrator, platform)
     # set the atom positions for the simulation's system's topology
     simulation.context.setPositions(pdb.positions)
-    
-    return simulation
+   
+    del pdb
+    del force_field
+    del constraints
+    del system
+    del stiffness
+    del integrator
+    del platform
+
+    return simulation, logger_string
 
 
-def run_minimization(simulation,out_file_name,max_iterations = 0,energy_tolerance = 2.39,fail_attempts=100,energy_units = openmm.unit.kilocalories_per_mole,length_units = openmm.unit.angstroms, logger = None):
+def run_minimization(simulation,out_file_name,max_iterations = 0,energy_tolerance = 2.39,fail_attempts=100,energy_units = openmm.unit.kilocalories_per_mole,length_units = openmm.unit.angstroms):
     """
     """
     tolerance = energy_tolerance * energy_units
     attempts = 0
     minimized = False
-    logger.info(f'Running the minimization:')
 
     # grab initial energies and positions
     state = simulation.context.getState(getEnergy=True, getPositions=True)
     einit = state.getPotentialEnergy().value_in_unit(energy_units)
     posinit = state.getPositions(asNumpy=True).value_in_unit(length_units)
-    logger.info(f'        Starting energy: {einit} kcal mol-1')
+    
+    logger_string = f'Running the minimization:\n        Starting energy: {einit} kcal mol-1\n'
     
     # attempt to minimize the structure
     while not minimized and attempts < fail_attempts:
@@ -223,7 +232,7 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
             state = simulation.context.getState(getEnergy=True, getPositions=True)
             efinal = state.getPotentialEnergy().value_in_unit(energy_units)
             positions = state.getPositions(asNumpy=True).value_in_unit(length_units)
-            logger.info(f'        Final energy: {efinal} kcal mol-1')
+            logger_string += f'        Final energy: {efinal} kcal mol-1\n'
              
             # saving the final structure to a pdb
             with open(out_file_name + '_min_%02d.pdb'%(attempts-1),'w') as out_file:
@@ -231,13 +240,15 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
                 os.chmod(out_file_name + '_min_%02d.pdb'%(attempts-1), stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
             minimized = True
         except Exception as e:
+            logger_string += f'        Attempt {attempt}: {e}\n'
             logger.info(e)
-    logger.info(f"        dE = {efinal - einit} kcal mol^{-1}")
+
+    logger_string += f'        dE = {efinal - einit} kcal mol^{-1}'
     
     if not minimized:
-        raise ValueError(f"Minimization failed after {fail_attempts} attempts.")
+        logger_string += f"Minimization failed after {fail_attempts} attempts."
     
-    return out_file_name + '_min_%02d.pdb'%(attempts-1)
+    return out_file_name + '_min_%02d.pdb'%(attempts-1), logger_string
 
 
 def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residues = []):
@@ -246,10 +257,7 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     full_start_time = time.time()
     path_breakdown = pdb_file.split('/')
     path = pdb_file.split(path_breakdown[-1])[0]   # grabbing working dir path by removing the file name
-    model_descriptor = path_breakdown[-1][:-4]     # grabbing a good file naming descriptor 
-    min_logger = setup_logger('minimization_logger', path + model_descriptor + '_min.log')  # setting up the individual run's logging file
-   
-    worker = get_worker()
+    model_descriptor = path_breakdown[-1][:-4]     # grabbing a good file naming descriptor
 
     try:
         os.mkdir(path+'/relaxation/')
@@ -257,12 +265,16 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     except FileExistsError:
         path = path+'/relaxation/'
 
+    min_logger = setup_logger('minimization_logger', path + model_descriptor + '_min.log')  # setting up the individual run's logging file
+
     # load pdb file and add missing atoms (mainly hydrogens)
     try:
         start = time.time()
-        pdb_file = fix_protein(pdb_file,output_pdb_file = path + model_descriptor + '_protonated.pdb', logger = min_logger)
-        min_logger.info(f'Finished preparing the protein model for minimization; took {time.time() - start} secs.')
-    except:
+        pdb_file, logger_string = fix_protein(pdb_file,output_pdb_file = path + model_descriptor + '_protonated.pdb')
+        logger_string += f'Finished preparing the protein model for minimization; took {time.time() - start} secs.'
+        min_logger.info(logger_string)
+    except Exception as e:
+        traceback.print_exc()
         min_logger.exception(f"Preparation of the protein failed. Killing this worker's task.")
         clean_logger(min_logger)
         os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
@@ -272,9 +284,11 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     # send protein into an OpenMM pipeline, preparing the protein for a simulation
     try:
         start = time.time()
-        simulation = prep_protein(pdb_file,restraint_set, exclude_residues = relax_exclude_residues, logger = min_logger)
-        min_logger.info(f'Finished preparing the simulation engine; took {time.time() - start} secs.')
-    except:
+        simulation, logger_string = prep_protein(pdb_file,restraint_set, exclude_residues = relax_exclude_residues)
+        logger_string += f'Finished preparing the simulation engine; took {time.time() - start} secs.'
+        min_logger.info(logger_string)
+    except Exception as e:
+        traceback.print_exc()
         min_logger.exception(f"Preparation of the simulation engine failed. Killing this worker's task.")
         clean_logger(min_logger)
         os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
@@ -284,19 +298,23 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     # run the minimization protocol and output minimized structure
     try:
         start = time.time()
-        final_pdb = run_minimization(simulation, path + model_descriptor, logger = min_logger)
-        min_logger.info(f'Finished running the minimization calculation; took {time.time() - start} secs.')
-    except:
+        final_pdb, logger_string = run_minimization(simulation, path + model_descriptor)
+        logger_string += f'Finished running the minimization calculation; took {time.time() - start} secs.'
+        min_logger.info(logger_string)
+    except Exception as e:
+        traceback.print_exc()
         min_logger.exception(f"Simulation failed. Killing this worker's task.")
         clean_logger(min_logger)
         os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
         
         return platform.node(), worker.id, full_start_time, time.time(), f'{pdb_file} failed on simulation.'
-        
+    
     clean_logger(min_logger)
     os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-
     worker = get_worker()
+
+    del simulation
+
     return platform.node(), worker.id, full_start_time, time.time(), final_pdb
     
 
@@ -365,6 +383,7 @@ if __name__ == '__main__':
     main_logger.info(f'Done. Shutting down the cluster. Time: {time.time()}')
     clean_logger(main_logger)
     os.chmod('tskmgr.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-    workers_list = list(workers_info)
-    disconnect(client,workers_list)
+    #workers_list = list(workers_info)
+    #disconnect(client,workers_list)
+    client.shutdown()
 
