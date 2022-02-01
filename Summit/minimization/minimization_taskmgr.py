@@ -27,6 +27,7 @@ import logging
 import platform
 import os
 import stat
+import traceback
 import gc
 
 import pdbfixer
@@ -146,7 +147,7 @@ def append_timings(csv_writer, hostname, worker_id, start_time, stop_time,
 def fix_protein(input_pdb_file, output_pdb_file = 'protonated.pdb'):
     """
     """
-    logger_string = f'Checking model for any required fixes (missing hydrogens and other atoms, etc).\n        Loading {input_pdb_file} to check for missing atoms and add hydrogens.'
+    logger_string = f'\nChecking model for any required fixes (missing hydrogens and other atoms, etc).\n        Loading {input_pdb_file} to check for missing atoms and add hydrogens.\n'
     
     fixer = pdbfixer.PDBFixer(pdbfile=open(input_pdb_file,'r'))
     fixer.findMissingResidues()
@@ -168,7 +169,7 @@ def prep_protein(pdb_file, restraint_set = "", exclude_residues = [], forcefield
     """
     """
    
-    logger_string += f'Preparing the simulation engine:\n        Loading {pdb_file} to create the OpenMM simulation object.\n'
+    logger_string = f'\nPreparing the simulation engine:\n        Loading {pdb_file} to create the OpenMM simulation object.\n'
     # load pdb file into an openmm Topology and coordinates object
     pdb = openmm.app.pdbfile.PDBFile(pdb_file)
 
@@ -219,7 +220,7 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
     einit = state.getPotentialEnergy().value_in_unit(energy_units)
     posinit = state.getPositions(asNumpy=True).value_in_unit(length_units)
     
-    logger_string = f'Running the minimization:\n        Starting energy: {einit} kcal mol-1\n'
+    logger_string = f'\nRunning the minimization:\n        Starting energy: {einit} kcal mol-1\n'
     
     # attempt to minimize the structure
     while not minimized and attempts < fail_attempts:
@@ -243,10 +244,10 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
             logger_string += f'        Attempt {attempt}: {e}\n'
             logger.info(e)
 
-    logger_string += f'        dE = {efinal - einit} kcal mol^{-1}'
+    logger_string += f'        dE = {efinal - einit} kcal mol^{-1}\n'
     
     if not minimized:
-        logger_string += f"Minimization failed after {fail_attempts} attempts."
+        logger_string += f"Minimization failed after {fail_attempts} attempts.\n"
     
     return out_file_name + '_min_%02d.pdb'%(attempts-1), logger_string
 
@@ -266,12 +267,14 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
         path = path+'/relaxation/'
 
     min_logger = setup_logger('minimization_logger', path + model_descriptor + '_min.log')  # setting up the individual run's logging file
+    
+    worker = get_worker()
 
     # load pdb file and add missing atoms (mainly hydrogens)
     try:
         start = time.time()
         pdb_file, logger_string = fix_protein(pdb_file,output_pdb_file = path + model_descriptor + '_protonated.pdb')
-        logger_string += f'Finished preparing the protein model for minimization; took {time.time() - start} secs.'
+        logger_string += f'Finished preparing the protein model for minimization; took {time.time() - start} secs.\n'
         min_logger.info(logger_string)
     except Exception as e:
         traceback.print_exc()
@@ -285,7 +288,7 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     try:
         start = time.time()
         simulation, logger_string = prep_protein(pdb_file,restraint_set, exclude_residues = relax_exclude_residues)
-        logger_string += f'Finished preparing the simulation engine; took {time.time() - start} secs.'
+        logger_string += f'Finished preparing the simulation engine; took {time.time() - start} secs.\n'
         min_logger.info(logger_string)
     except Exception as e:
         traceback.print_exc()
@@ -299,7 +302,7 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     try:
         start = time.time()
         final_pdb, logger_string = run_minimization(simulation, path + model_descriptor)
-        logger_string += f'Finished running the minimization calculation; took {time.time() - start} secs.'
+        logger_string += f'Finished running the minimization calculation; took {time.time() - start} secs.\n'
         min_logger.info(logger_string)
     except Exception as e:
         traceback.print_exc()
@@ -311,7 +314,6 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
     
     clean_logger(min_logger)
     os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-    worker = get_worker()
 
     del simulation
 
