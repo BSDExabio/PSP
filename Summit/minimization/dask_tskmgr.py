@@ -37,6 +37,7 @@ from subprocess import CalledProcessError
 
 import dask.config
 from distributed import Client, as_completed, get_worker
+from distributed.diagnostics.plugin import WorkerPlugin
 
 #import logging
 import logging_functions
