@@ -1,25 +1,8 @@
 #!/usr/bin/env python3
-""" Task manager for running post-AF minimization on Summit. 
 
-    Ingests a file of .pdb files and distributes work to process them among allocated dask workers. The dask workers will be assigned to a single GPU and associated CPUs. 
-
-    USAGE: 
-        python3 minimization_taskmgr.py [-h] [--scheduler-timeout SCHEDULER_TIMEOUT] --scheduler-file SCHEDULER_FILE --input-file INPUT_FILE
-
-    INPUT: 
-        -h, --help      show this help message and exit
-        --scheduler-timeout SCHEDULER_TIMEOUT, -t SCHEDULER_TIMEOUT 
-                        dask scheduler timeout; default: 5000 seconds
-        --scheduler-file SCHEDULER_FILE, -s SCHEDULER_FILE
-                        dask scheduler file
-        --input-file INPUT_FILE, -i INPUT_FILE
-                        file containing paths to pdb files to process
-
-    HARD CODED VARIABLES:
-        RESTRAINT_SET: set to "non_hydrogen"; "c_alpha" is also acceptable
-        RELAX_EXCLUDE_RESIDUES: set to an empty list; used to ignore residues when setting up restraints for atom positions. 
-
-"""
+import pdbfixer
+import openmm
+import logging
 
 import time
 import argparse
@@ -28,72 +11,11 @@ import platform
 import os
 import stat
 import traceback
-import gc
-
-import pdbfixer
-import openmm
-import csv
-
-from distributed import Client, as_completed, get_worker
-
-# NOTE: hard coded variables for the moment.
-RESTRAINT_SET = "non_hydrogen"  # or "c_alpha"
-RELAX_EXCLUDE_RESIDUES = []     # fed to openmm minimizeEnergy; left empty by default
 
 
 #######################################
-### DASK RELATED FUNCTIONS
+### PIPELINE FUNCTIONS
 #######################################
-
-def setup_logger(name, log_file, level=logging.INFO):
-    """To setup as many loggers as you want"""
-    formatter = logging.Formatter('%(asctime)s      %(levelname)s       %(message)s')
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
-
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-
-    return logger
-
-
-def clean_logger(logger):
-    """To cleanup the logger instances once we are done with them"""
-    for handle in logger.handlers:
-        handle.flush()
-        handle.close()
-        logger.removeHandler(handle)
-
-
-def get_num_workers(client):
-    """ Get the number of active workers
-    :param client: active dask client
-    :return: the number of workers registered to the scheduler
-    """
-    scheduler_info = client.scheduler_info()
-
-    return len(scheduler_info['workers'].keys())
-
-
-def disconnect(client, workers_list):
-    """ Shutdown the active workers in workers_list
-    :param client: active dask client
-    :param workers_list: list of dask workers
-    """
-    client.retire_workers(workers_list, close_workers=True)
-    client.shutdown()
-
-
-def read_input_file(input_file):
-    """ Read text file containing proteins to be processed
-    :param input_file: str; a path to input file of proteins
-    :return: list of strings that each point to a protein model to be processed
-    """
-    with open(input_file,'r') as file_input:
-        # Each line contains the path to a AF model .pdb file
-        return [x.rstrip() for x in file_input]
-
 
 def will_restrain(atom: openmm.app.topology.Atom, rset: str) -> bool:
   """Returns True if the atom will be restrained by the given restraint set."""
@@ -125,23 +47,6 @@ def _add_restraints(
     if will_restrain(atom, rset):
       force.addParticle(i, reference_pdb.positions[i])
   system.addForce(force)
-
-
-def append_timings(csv_writer, hostname, worker_id, start_time, stop_time,
-                   protein):
-    """ append the protein timings to the CSV timings file
-    :param csv_writer: CSV to which to append timings
-    :param hostname: on which the processing took place
-    :param worker_id: of the dask worker that did the processing
-    :param start_time: start time in *NIX epoch seconds
-    :param stop_time: stop time in same units
-    :param protein: that was processed
-    """
-    csv_writer.writerow({'hostname'  : hostname,
-                         'worker_id' : worker_id,
-                         'start_time': start_time,
-                         'stop_time' : stop_time,
-                         'protein'   : protein})
 
 
 def fix_protein(input_pdb_file, output_pdb_file = 'protonated.pdb'):
@@ -252,23 +157,10 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
     return out_file_name + '_min_%02d.pdb'%(attempts-1), logger_string
 
 
+### convert to if __name__ == '__main__': chunk of code
 def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residues = []):
     """
     """
-    full_start_time = time.time()
-    path_breakdown = pdb_file.split('/')
-    path = pdb_file.split(path_breakdown[-1])[0]   # grabbing working dir path by removing the file name
-    model_descriptor = path_breakdown[-1][:-4]     # grabbing a good file naming descriptor
-
-    try:
-        os.mkdir(path+'/relaxation/')
-        path = path+'/relaxation/'
-    except FileExistsError:
-        path = path+'/relaxation/'
-
-    min_logger = setup_logger('minimization_logger', path + model_descriptor + '_min.log')  # setting up the individual run's logging file
-    
-    worker = get_worker()
 
     # load pdb file and add missing atoms (mainly hydrogens)
     try:
@@ -312,80 +204,13 @@ def run_pipeline(pdb_file, restraint_set = 'non_hydrogen', relax_exclude_residue
         
         return platform.node(), worker.id, full_start_time, time.time(), f'{pdb_file} failed on simulation.'
     
-    clean_logger(min_logger)
-    os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-
     del simulation
 
     return platform.node(), worker.id, full_start_time, time.time(), final_pdb
     
 
-#######################################
-### MAIN
-#######################################
 
-if __name__ == '__main__':
-    # read command line arguments
-    parser = argparse.ArgumentParser(description='Post-AF energy minimization task manager')
-    parser.add_argument('--scheduler-timeout', '-t', default=5000, type=int, help='dask scheduler timeout')
-    parser.add_argument('--scheduler-file', '-s', required=True, help='dask scheduler file')
-    parser.add_argument('--input-file', '-i', required=True, help='file containing proteins to process')
-    parser.add_argument('--timings-file', '-ts', required=True, help='CSV file for protein processing timings')
-    args = parser.parse_args()
 
-    # setting up the main logger
-    main_logger = setup_logger('tskmgr_logger','tskmgr.log')
-    main_logger.info(f'Starting dask pipeline and setting up logging. Time: {time.time()}')
-    main_logger.info(f'Scheduler file: {args.scheduler_file}')
-    main_logger.info(f'Scheduler timeout: {args.scheduler_timeout}')
-    main_logger.info(f'Input file: {args.input_file}')
 
-    # create list of strings pointing to pdb files to be energy minimized
-    proteins = read_input_file(args.input_file)
-    main_logger.info(f'Read {len(proteins)} proteins to process.')
 
-    # setting up timing log file
-    timings_file = open(args.timings_file, 'w')
-    timings_csv = csv.DictWriter(timings_file,['hostname','worker_id','start_time','stop_time','protein'])
-    timings_csv.writeheader()
-
-    # starting dask client
-    client = Client(scheduler_file=args.scheduler_file,timeout=args.scheduler_timeout,name='energymintaskmgr')
-    main_logger.info(f'Client information: {client}')
-    NUM_WORKERS = get_num_workers(client)
-    main_logger.info(f'Starting with {NUM_WORKERS} dask workers.')
-
-    # waiting for workers...
-    wait_start = time.time()
-    client.wait_for_workers(n_workers=NUM_WORKERS)
-    main_logger.info(f'Waited for {NUM_WORKERS} workers took {time.time() - wait_start} sec')
-    workers_info = client.scheduler_info()['workers']
-    connected_workers = len(workers_info)
-    main_logger.info(f'{connected_workers} workers connected')
-
-    # do the thing.
-    task_futures = client.map(run_pipeline,proteins, restraint_set = RESTRAINT_SET, relax_exclude_residues = RELAX_EXCLUDE_RESIDUES) 
-
-    # gather results
-    ac = as_completed(task_futures)
-    for i, finished_task in enumerate(ac):
-        hostname, worker_id, start_time, stop_time, protein = finished_task.result()
-        if 'failed' in protein:
-            main_logger.info(f'{protein}')
-            main_logger.info(f'{len(proteins) - i - 1} proteins left')
-            append_timings(timings_csv,hostname,worker_id,start_time,stop_time,protein)
-        else:
-            main_logger.info(f'{protein} processed in {(stop_time - start_time) / 60.} minutes.')
-            main_logger.info(f'{len(proteins) - i - 1} proteins left')
-            append_timings(timings_csv,hostname,worker_id,start_time,stop_time,protein)
-
-    # closing log files and shutting down the cluster
-    timings_file.close()
-    os.chmod(args.timings_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-    main_logger.info(f'Done. Shutting down the cluster. Time: {time.time()}')
-    clean_logger(main_logger)
-    os.chmod('tskmgr.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-    #workers_list = list(workers_info)
-    #disconnect(client,workers_list)
-    client.shutdown()
 
