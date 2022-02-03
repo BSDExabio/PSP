@@ -164,7 +164,7 @@ def submit_pipeline(pdb_file,restraint_set="non_hydrogen",relax_exclude_residues
     start_time = time.time()
 
     try:
-        completed_process = subprocess.run(['python3',pdb_file,restraint_set,relax_exclude_residues,directory],shell=False,capture_output=True,check=True)
+        completed_process = subprocess.run(['python3','minimization.py',pdb_file,restraint_set,relax_exclude_residues,directory],shell=False,capture_output=True,check=True)
         final_pdb = completed_process.stdout.decode('utf-8')
         worker.logger.info(f'Finished minimization of {pdb_file}; saved to {final_pdb}')
         return platform.node(), worker.id, start_time, time.time(), final_pdb
