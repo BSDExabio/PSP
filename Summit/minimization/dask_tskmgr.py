@@ -16,11 +16,15 @@
                         file containing paths to pdb files to process
         --timings-file TIMINGS_FILE.csv, -ts TIMINGS_FILE.csv 
                         CSV file for protein processing timings
+        --working-dir /path/to/dir/, -wd /path/to/dir/
+                        full path to the directory within which files will be written
+        --script-path /path/to/dir/script.py, -sp /path/to/dir/script.py
+                        full path to the python script to be run within the subprocess
 
     HARD CODED VARIABLES:
         RESTRAINT_SET: set to "non_hydrogen"; "c_alpha" is also acceptable
         RELAX_EXCLUDE_RESIDUES: set to an empty list; used to ignore residues when setting up restraints for atom positions. 
-
+        DIRECTORY: name of the directory within which output for each task will be written
 """
 
 import time
@@ -29,6 +33,7 @@ import platform
 import os
 import stat
 import traceback
+import numpy as np
 
 import csv
 
@@ -36,73 +41,14 @@ import subprocess
 from subprocess import CalledProcessError
 
 import dask.config
-from distributed import Client, as_completed, get_worker
-from distributed.diagnostics.plugin import WorkerPlugin
+from distributed import Client, Worker, as_completed, get_worker
 
-#import logging
 import logging_functions
 
 # NOTE: hard coded variables for the moment.
 RESTRAINT_SET = "non_hydrogen"  # or "c_alpha"
 RELAX_EXCLUDE_RESIDUES = []     # fed to openmm minimizeEnergy; left empty by default
 DIRECTORY = 'relaxation'
-
-
-#######################################
-### WORKER PLUGIN
-#######################################
-
-class WorkerLoggerPlugin(WorkerPlugin):
-    """
-        This dask worker plugin adds a logger for each worker that reports
-        the hostname, worker ID, and process ID.
-
-        Usage:
-
-        client.register_worker_plugin(WorkerLoggerPlugin()) after dask client
-        is setup.
-
-        Then in code sent to worker:
-
-        worker = get_worker()
-        worker.logger.info('This is a log message')
-    """
-
-    def __init__(self, verbose=False, *args, **kwargs):
-        """
-        :param verbose: is True if you want DEBUG level output
-        :param args: n/a
-        :param kwargs: n/a
-        """
-        super().__init__()
-        self.verbose = verbose
-
-    def setup_logger(self, worker):
-        # We need to create and attach a logger _to each worker_ since
-        # they'll be living in their own process/thread space.
-        worker.logger = logger
-
-        if self.verbose:
-            worker.logger.setLevel(logging.DEBUG)
-        else:
-            worker.logger.setLevel(logging.INFO)
-
-    def setup(self, worker: dask.distributed.Worker):
-        """ This is invoked once for each worker on their startup. The
-            scheduler will also ensure that all workers invoke this.
-         """
-        if hasattr(worker, 'logger'):
-            worker.logger.warning('already has a logger')
-        else:
-            # Create an attach a logger that will echo the hostname and
-            # unique dask worker id with each log message along with a
-            # timestamp
-            self.setup_logger(worker)
-            worker.logger.info(f'worker setup for {worker.id}')
-
-    def teardown(self, worker: dask.distributed.Worker):
-        worker.logger.info(f'Tearing down worker {worker.id}')
-
 
 #######################################
 ### DASK RELATED FUNCTIONS
@@ -132,10 +78,11 @@ def read_input_file(input_file):
     :param input_file: str; a path to input file of proteins
     :return: list of strings that each point to a protein model to be processed
     """
-    ### order the .pdb files based on the number of atoms
     with open(input_file,'r') as file_input:
         # Each line contains the path to a AF model .pdb file
-        return [x.rstrip() for x in file_input]
+        pdb_list = [x.rstrip() for x in file_input]
+        file_sizes = np.array([os.path.getsize(pdb) for pdb in pdb_list])
+        return [pdb_list[i] for i in np.argsort(file_sizes)[::-1]]
 
 
 def append_timings(csv_writer, file_object, hostname, worker_id, start_time, stop_time,
@@ -156,18 +103,17 @@ def append_timings(csv_writer, file_object, hostname, worker_id, start_time, sto
     file_object.flush()
 
 
-def submit_pipeline(pdb_file,restraint_set="non_hydrogen",relax_exclude_residues=[],directory=''):
+def submit_pipeline(pdb_file,script,working_directory,restraint_set="non_hydrogen",relax_exclude_residues=[],save_directory=''):
     """
     """
     worker = get_worker()
-    worker.logger.info(f'{time.time()} - {worker.id} - working on {pdb_file}')
-
     start_time = time.time()
+    worker.logger.info(f'Starting to process {pdb_file} at {start_time}.')
 
     try:
-        completed_process = subprocess.run(['python3','minimization.py',pdb_file,restraint_set,relax_exclude_residues,directory],shell=False,capture_output=True,check=True)
-        final_pdb = completed_process.stdout.decode('utf-8')
-        worker.logger.info(f'Finished minimization of {pdb_file}; saved to {final_pdb}')
+        completed_process = subprocess.run(['python3',script,pdb_file,restraint_set,save_directory],shell=False,capture_output=True,check=True,cwd=working_directory)
+        final_pdb = completed_process.stdout.decode('utf-8').strip()
+        worker.logger.info(f'Finished minimization of {pdb_file}; saved to {final_pdb}.')
         return platform.node(), worker.id, start_time, time.time(), final_pdb
 
     except CalledProcessError as e:
@@ -192,20 +138,32 @@ if __name__ == '__main__':
     parser.add_argument('--scheduler-file', '-s', required=True, help='dask scheduler file')
     parser.add_argument('--input-file', '-i', required=True, help='file containing proteins to process')
     parser.add_argument('--timings-file', '-ts', required=True, help='CSV file for protein processing timings')
+    parser.add_argument('--working-dir', '-wd', required=True, help='path that points to the working directory for the output files')
+    parser.add_argument('--script-path', '-sp', required=True, help='path that points to the script for the subprocess call')
     args = parser.parse_args()
 
+    if args.working_dir[-1] != os.path.sep:
+        args.working_dir += os.path.sep
+
     # set up the main logger file and list all relevant parameters.
-    main_logger = logging_functions.setup_logger('tskmgr_logger','tskmgr.log')
+    main_logger = logging_functions.setup_logger('tskmgr_logger',f'{args.working_dir}tskmgr.log')
     main_logger.info(f'Starting dask pipeline and setting up logging. Time: {time.time()}')
     main_logger.info(f'Scheduler file: {args.scheduler_file}')
     main_logger.info(f'Scheduler timeout: {args.scheduler_timeout}')
-    main_logger.info(f'Dask parameters:\n{dask.config.config}')
-    main_logger.info(f'Input file: {args.input_file}\n################################################################################')
+    main_logger.info(f'Timing file: {args.timings_file}')
+    main_logger.info(f'Working directory: {args.working_dir}')
+    main_logger.info(f'Path to subprocess script: {args.script_path}')
+    main_logger.info(f'Structure input file: {args.input_file}')
+    dask_parameter_string = ''
+    for key, value in dask.config.config.items():
+        dask_parameter_string += f"'{key}': '{value}'\n"
+    dask_parameter_string += '################################################################################'
+    main_logger.info(f'Dask parameters:\n{dask_parameter_string}')
 
     # create list of strings pointing to pdb files to be energy minimized.
-    # write code to sort this list based on atom numbers (or by file size)
     proteins = read_input_file(args.input_file)
-    main_logger.info(f'Read {len(proteins)} proteins to process.')
+    nProteins = len(proteins)
+    main_logger.info(f'Read and sorted {nProteins} proteins for relaxation.')
 
     # set up timing log file.
     timings_file = open(args.timings_file, 'w')
@@ -217,9 +175,6 @@ if __name__ == '__main__':
     main_logger.info(f'Client information: {client}')
     NUM_WORKERS = get_num_workers(client)
     main_logger.info(f'Starting with {NUM_WORKERS} dask workers.')
-
-    # load worker logger plugin.
-    client.register_worker_plugin(WorkerLoggerPlugin())
     
     # wait for workers.
     wait_start = time.time()
@@ -227,10 +182,12 @@ if __name__ == '__main__':
     main_logger.info(f'Waited for {NUM_WORKERS} workers took {time.time() - wait_start} sec')
     workers_info = client.scheduler_info()['workers']
     connected_workers = len(workers_info)
-    main_logger.info(f'{connected_workers} workers connected')
+    main_logger.info(f'{connected_workers} workers connected. Log files created.')
+
+    client.register_worker_plugin(logging_functions.WorkerLoggerPlugin())
 
     # do the thing.
-    task_futures = client.map(submit_pipeline,proteins, restraint_set = RESTRAINT_SET, relax_exclude_residues = RELAX_EXCLUDE_RESIDUES, directory = DIRECTORY, pure=False) 
+    task_futures = client.map(submit_pipeline,proteins,args.script_path,args.working_dir, restraint_set = RESTRAINT_SET, relax_exclude_residues = RELAX_EXCLUDE_RESIDUES, save_directory = DIRECTORY, pure=False) 
 
     # gather results.
     ac = as_completed(task_futures)
@@ -239,11 +196,11 @@ if __name__ == '__main__':
         hostname, worker_id, start_time, stop_time, protein = finished_task.result()
         if 'failed' in protein:
             main_logger.info(f'{protein}')
-            main_logger.info(f'{len(proteins) - i - 1} proteins left')
+            main_logger.info(f'{nProteins - i - 1} proteins left')
             append_timings(timings_csv,timings_file,hostname,worker_id,start_time,stop_time,protein)
         else:
             main_logger.info(f'{protein} processed in {(stop_time - start_time) / 60.} minutes.')
-            main_logger.info(f'{len(proteins) - i - 1} proteins left')
+            main_logger.info(f'{nProteins - i - 1} proteins left')
             append_timings(timings_csv,timings_file,hostname,worker_id,start_time,stop_time,protein)
 
     # close log files and shut down the cluster.

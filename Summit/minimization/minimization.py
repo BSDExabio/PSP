@@ -8,6 +8,7 @@ import time
 import os
 import stat
 import traceback
+import sys
 
 import logging_functions
 
@@ -47,7 +48,7 @@ def _add_restraints(
   system.addForce(force)
 
 
-def fix_protein(input_pdb_file, output_pdb_file = 'protonated.pdb', logger_file):
+def fix_protein(input_pdb_file, logger_file, output_pdb_file = 'protonated.pdb'):
     """
     """
     logger_file.info(f'Checking model for any required fixes (missing hydrogens and other atoms, etc).\n        Loading {input_pdb_file} to check for missing atoms and add hydrogens.\n')
@@ -95,7 +96,7 @@ def prep_protein(pdb_file, logger_file, restraint_set = "", exclude_residues = [
     return simulation
 
 
-def run_minimization(simulation,out_file_name,max_iterations = 0,energy_tolerance = 2.39,fail_attempts=100,energy_units = openmm.unit.kilocalories_per_mole,length_units = openmm.unit.angstroms):
+def run_minimization(simulation,out_file_name,logger_file,max_iterations = 0,energy_tolerance = 2.39,fail_attempts=100,energy_units = openmm.unit.kilocalories_per_mole,length_units = openmm.unit.angstroms):
     """
     """
     tolerance = energy_tolerance * energy_units
@@ -107,7 +108,8 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
     einit = state.getPotentialEnergy().value_in_unit(energy_units)
     posinit = state.getPositions(asNumpy=True).value_in_unit(length_units)
     
-    logger_string = f'\nRunning the minimization:\n        Starting energy: {einit} kcal mol-1\n'
+    logger_file.info(f'Running the minimization:')
+    logger_file.info(f'        Starting energy: {einit} kcal mol-1')
     
     # attempt to minimize the structure
     while not minimized and attempts < fail_attempts:
@@ -120,7 +122,7 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
             state = simulation.context.getState(getEnergy=True, getPositions=True)
             efinal = state.getPotentialEnergy().value_in_unit(energy_units)
             positions = state.getPositions(asNumpy=True).value_in_unit(length_units)
-            logger_string += f'        Final energy: {efinal} kcal mol-1\n'
+            logger_file.info(f'        Final energy: {efinal} kcal mol-1')
              
             # saving the final structure to a pdb
             with open(out_file_name + '_min_%02d.pdb'%(attempts-1),'w') as out_file:
@@ -128,15 +130,15 @@ def run_minimization(simulation,out_file_name,max_iterations = 0,energy_toleranc
                 os.chmod(out_file_name + '_min_%02d.pdb'%(attempts-1), stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
             minimized = True
         except Exception as e:
-            logger_string += f'        Attempt {attempt}: {e}\n'
-            logger.info(e)
+            logger_file.info(f'        Attempt {attempts}: {e}')
+            logger_file.info(e)
 
-    logger_string += f'        dE = {efinal - einit} kcal mol^{-1}\n'
+    logger_file.info(f'        dE = {efinal - einit} kcal mol^{-1}')
     
     if not minimized:
-        logger_string += f"Minimization failed after {fail_attempts} attempts.\n"
+        logger_file.info(f"Minimization failed after {fail_attempts} attempts.")
     
-    return out_file_name + '_min_%02d.pdb'%(attempts-1), logger_string
+    return out_file_name + '_min_%02d.pdb'%(attempts-1)
 
 
 ### convert to  chunk of code
@@ -144,8 +146,8 @@ if __name__ == '__main__':
     # stash arguments in variables.
     pdb_file = sys.argv[1]
     restraint_set = sys.argv[2]
-    relax_exclude_ressidues = sys.argv[3]
-    directory = sys.argv[4]
+    directory = sys.argv[3]
+    relax_exclude_residues = []
 
     # grab path information.
     path_breakdown = pdb_file.split('/')
@@ -154,19 +156,18 @@ if __name__ == '__main__':
 
     # make working directory.
     try:
-        os.mkdir(path+f'/{directory}/')
-        path = path+f'/{directory}/'
+        os.mkdir(path+f'{directory}/')
+        path = path+f'{directory}/'
     except FileExistsError:
-        path = path+f'/{directory}/'
+        path = path+f'{directory}/'
 
     min_logger = logging_functions.setup_logger('minimization_logger', path + model_descriptor + '_min.log')  # setting up the individual run's logging file
     
     # load pdb file and add missing atoms (mainly hydrogens).
     try:
         start = time.time()
-        pdb_file = fix_protein(pdb_file,output_pdb_file = path + model_descriptor + '_protonated.pdb',min_logger)
+        pdb_file = fix_protein(pdb_file,min_logger,output_pdb_file = path + model_descriptor + '_protonated.pdb')
         min_logger.info(f'Finished preparing the protein model for minimization; took {time.time() - start} secs.\n')
-        min_logger.flush()
     except Exception as e:
         traceback.print_exc()
         min_logger.exception(f"Preparation of the protein failed. Killing this worker's task.")
@@ -193,7 +194,6 @@ if __name__ == '__main__':
         start = time.time()
         final_pdb = run_minimization(simulation, path + model_descriptor, min_logger)
         min_logger.info(f'Finished running the minimization calculation; took {time.time() - start} secs.\n')
-        min_logger.info(logger_string)
     except Exception as e:
         traceback.print_exc()
         min_logger.exception(f"Simulation failed. Killing this worker's task.")
@@ -204,5 +204,5 @@ if __name__ == '__main__':
     
     logging_functions.clean_logger(min_logger)
     os.chmod(path + model_descriptor + '_min.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-    
+    print(f'{pdb_file}')
 
