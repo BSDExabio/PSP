@@ -14,7 +14,7 @@
 #BSUB -e afold_min.%J.err
 #BSUB -N
 #BSUB -B
-#BSUB -1 debug
+#BSUB -q debug
 
 # set up the modules and python environment
 module load cuda/10.2.89 gcc/8.1.1
