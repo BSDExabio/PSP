@@ -190,7 +190,7 @@ if __name__ == '__main__':
     connected_workers = len(workers_info)
     main_logger.info(f'{connected_workers} workers connected. Log files created.')
 
-    src_dir = args.script_path
+    src_dir = Path(args.script_path)
     client.upload_file(src_dir / 'logging_functions.py')
 
     client.register_worker_plugin(WorkerLoggerPlugin())
