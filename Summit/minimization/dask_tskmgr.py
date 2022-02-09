@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-""" Task manager for running the dask pipeline for post-AF minimization on Summit. 
+""" Task manager for running the dask pipeline for post-AF minimization on Summit.
 
-    Ingests a file of .pdb files and distributes work to process them among allocated dask workers. The dask workers will be assigned to a single GPU and associated CPUs. 
+    Ingests a file of .pdb files and distributes work to process them among allocated dask workers. The dask workers will be assigned to a single GPU and associated CPUs.
 
-    USAGE: 
+    USAGE:
         python3 minimization_taskmgr.py [-h] [--scheduler-timeout SCHEDULER_TIMEOUT] --scheduler-file SCHEDULER_FILE --input-file INPUT_FILE --timings-file TIMINGS_FILE.csv
 
-    INPUT: 
+    INPUT:
         -h, --help      show this help message and exit
-        --scheduler-timeout SCHEDULER_TIMEOUT, -t SCHEDULER_TIMEOUT 
+        --scheduler-timeout SCHEDULER_TIMEOUT, -t SCHEDULER_TIMEOUT
                         dask scheduler timeout; default: 5000 seconds
         --scheduler-file SCHEDULER_FILE, -s SCHEDULER_FILE
                         dask scheduler file
         --input-file INPUT_FILE, -i INPUT_FILE
                         file containing paths to pdb files to process
-        --timings-file TIMINGS_FILE.csv, -ts TIMINGS_FILE.csv 
+        --timings-file TIMINGS_FILE.csv, -ts TIMINGS_FILE.csv
                         CSV file for protein processing timings
         --working-dir /path/to/dir/, -wd /path/to/dir/
                         full path to the directory within which files will be written
@@ -23,7 +23,7 @@
 
     HARD CODED VARIABLES:
         RESTRAINT_SET: set to "non_hydrogen"; "c_alpha" is also acceptable
-        RELAX_EXCLUDE_RESIDUES: set to an empty list; used to ignore residues when setting up restraints for atom positions. 
+        RELAX_EXCLUDE_RESIDUES: set to an empty list; used to ignore residues when setting up restraints for atom positions.
         DIRECTORY: name of the directory within which output for each task will be written
 """
 
@@ -110,21 +110,23 @@ def submit_pipeline(pdb_file,script,working_directory,restraint_set="non_hydroge
     start_time = time.time()
     worker.logger.info(f'Starting to process {pdb_file} at {start_time}.')
 
-    try:
-        completed_process = subprocess.run(['python3',script,pdb_file,restraint_set,save_directory],shell=False,capture_output=True,check=True,cwd=working_directory)
-        final_pdb = completed_process.stdout.decode('utf-8').strip()
-        worker.logger.info(f'Finished minimization of {pdb_file}; saved to {final_pdb}.')
-        return platform.node(), worker.id, start_time, time.time(), final_pdb
+    # FIXME temporarily commented out to fix logger error
 
-    except CalledProcessError as e:
-        worker.logger.error(f'Exception occurred. Return code {e.returncode}')
-        worker.logger.error(f'Exception cmd: {e.cmd}')
-        return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
-
-    except Exception as e:
-        worker.logger.error(f'Odd exception {e} raised')
-        worker.logger.error(f'Exception cmd: {e.cmd}')
-        return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
+    # try:
+    #     completed_process = subprocess.run(['python3',script,pdb_file,restraint_set,save_directory],shell=False,capture_output=True,check=True,cwd=working_directory)
+    #     final_pdb = completed_process.stdout.decode('utf-8').strip()
+    #     worker.logger.info(f'Finished minimization of {pdb_file}; saved to {final_pdb}.')
+    #     return platform.node(), worker.id, start_time, time.time(), final_pdb
+    #
+    # except CalledProcessError as e:
+    #     worker.logger.error(f'Exception occurred. Return code {e.returncode}')
+    #     worker.logger.error(f'Exception cmd: {e.cmd}')
+    #     return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
+    #
+    # except Exception as e:
+    #     worker.logger.error(f'Odd exception {e} raised')
+    #     worker.logger.error(f'Exception cmd: {e.cmd}')
+    #     return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
 
 
 #######################################
@@ -175,7 +177,7 @@ if __name__ == '__main__':
     main_logger.info(f'Client information: {client}')
     NUM_WORKERS = get_num_workers(client)
     main_logger.info(f'Starting with {NUM_WORKERS} dask workers.')
-    
+
     # wait for workers.
     wait_start = time.time()
     client.wait_for_workers(n_workers=NUM_WORKERS)
@@ -187,7 +189,7 @@ if __name__ == '__main__':
     client.register_worker_plugin(logging_functions.WorkerLoggerPlugin())
 
     # do the thing.
-    task_futures = client.map(submit_pipeline,proteins,args.script_path,args.working_dir, restraint_set = RESTRAINT_SET, relax_exclude_residues = RELAX_EXCLUDE_RESIDUES, save_directory = DIRECTORY, pure=False) 
+    task_futures = client.map(submit_pipeline,proteins,args.script_path,args.working_dir, restraint_set = RESTRAINT_SET, relax_exclude_residues = RELAX_EXCLUDE_RESIDUES, save_directory = DIRECTORY, pure=False)
 
     # gather results.
     ac = as_completed(task_futures)
@@ -210,4 +212,3 @@ if __name__ == '__main__':
     logging_functions.clean_logger(main_logger)
     os.chmod('tskmgr.log', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
     client.shutdown()
-

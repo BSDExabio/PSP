@@ -2,11 +2,11 @@
 #
 # Batch submission script for testing post-AF minimization run on Summit
 #
-# Support issue-14 branch on PSP git repository
+# Branch issue-19-mark for Mark to help Russ debugging
 #
 ##BSUB -P BIP198
 #BSUB -P BIF135
-#BSUB -W 2:00
+#BSUB -W 0:05
 #BSUB -nnodes 1
 #BSUB -alloc_flags gpudefault
 #BSUB -J af_min
@@ -14,6 +14,7 @@
 #BSUB -e afold_min.%J.err
 #BSUB -N
 #BSUB -B
+#BSUB -1 debug
 
 # set up the modules and python environment
 module load cuda/10.2.89 gcc/8.1.1
@@ -37,7 +38,7 @@ unset __conda_setup
 conda activate openmm
 
 # set active directories
-RUN_DIR=/gpfs/alpine/bip198/proj-shared/minimize_af/debug/test4
+RUN_DIR=/gpfs/alpine/csc396/proj-shared/mcoletti/runs/minimizer/issue-19-mark
 SCHEDULER_FILE=${RUN_DIR}/scheduler_file.json
 
 if [ ! -d "$SCHEDULER_DIR" ]
