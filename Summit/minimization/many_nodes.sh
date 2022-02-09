@@ -41,7 +41,7 @@ conda activate openmm
 SRC_DIR=/gpfs/alpine/csc396/proj-shared/mcoletti/PSP/Summit/minimization
 RUN_DIR=/gpfs/alpine/csc396/proj-shared/mcoletti/runs/minimizer/issue-19-mark
 SCHEDULER_FILE=${RUN_DIR}/scheduler_file.json
-PYTHONPATH=/gpfs/alpine/csc396/proj-shared/mcoletti/PSP/Summit/minimization:$PYTHONPATH
+PYTHONPATH=/gpfs/alpine/csc396/proj-shared/mcoletti/PSP/Summit/minimization:.:$PYTHONPATH
 
 if [ ! -d "$SCHEDULER_DIR" ]
 then
