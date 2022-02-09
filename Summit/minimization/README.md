@@ -31,7 +31,7 @@ conda install pdbfixer dask
 # start an interactive job on a single node of SUMMIT
 bsub -W 2:00 -nnodes 1 -P bip198 -alloc_flags gpudefault -Is /bin/bash
 # test installation of OpenMM
-python -m simtk.testInstallation
+python -m openmm.testInstallation
 ```
 
 ## USAGE: 
@@ -39,4 +39,3 @@ python -m simtk.testInstallation
 ```bash
 bsub many_nodes.sh	# after editing the bsub lines
 ```
-
