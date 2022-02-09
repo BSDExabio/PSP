@@ -113,23 +113,21 @@ def submit_pipeline(pdb_file,script,working_directory,restraint_set="non_hydroge
     start_time = time.time()
     worker.logger.info(f'Starting to process {pdb_file} at {start_time}.')
 
-    # FIXME temporarily commented out to fix logger error
+    try:
+        completed_process = subprocess.run(['python3',script,pdb_file,restraint_set,save_directory],shell=False,capture_output=True,check=True,cwd=working_directory)
+        final_pdb = completed_process.stdout.decode('utf-8').strip()
+        worker.logger.info(f'Finished minimization of {pdb_file}; saved to {final_pdb}.')
+        return platform.node(), worker.id, start_time, time.time(), final_pdb
 
-    # try:
-    #     completed_process = subprocess.run(['python3',script,pdb_file,restraint_set,save_directory],shell=False,capture_output=True,check=True,cwd=working_directory)
-    #     final_pdb = completed_process.stdout.decode('utf-8').strip()
-    #     worker.logger.info(f'Finished minimization of {pdb_file}; saved to {final_pdb}.')
-    #     return platform.node(), worker.id, start_time, time.time(), final_pdb
-    #
-    # except CalledProcessError as e:
-    #     worker.logger.error(f'Exception occurred. Return code {e.returncode}')
-    #     worker.logger.error(f'Exception cmd: {e.cmd}')
-    #     return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
-    #
-    # except Exception as e:
-    #     worker.logger.error(f'Odd exception {e} raised')
-    #     worker.logger.error(f'Exception cmd: {e.cmd}')
-    #     return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
+    except CalledProcessError as e:
+        worker.logger.error(f'Exception occurred. Return code {e.returncode}')
+        worker.logger.error(f'Exception cmd: {e.cmd}')
+        return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
+
+    except Exception as e:
+        worker.logger.error(f'Odd exception {e} raised')
+        worker.logger.error(f'Exception cmd: {e.cmd}')
+        return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
 
 
 #######################################
