@@ -31,6 +31,7 @@ import time
 import argparse
 import platform
 import os
+import sys
 import stat
 import traceback
 import numpy as np
@@ -157,6 +158,7 @@ if __name__ == '__main__':
     main_logger.info(f'Working directory: {args.working_dir}')
     main_logger.info(f'Path to subprocess script: {args.script_path}')
     main_logger.info(f'Structure input file: {args.input_file}')
+    main_logger.info(f'PYTHONPATH: {sys.path}')
     dask_parameter_string = ''
     for key, value in dask.config.config.items():
         dask_parameter_string += f"'{key}': '{value}'\n"
