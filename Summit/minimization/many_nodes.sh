@@ -53,6 +53,11 @@ cat $LSB_DJOB_HOSTFILE | sort | uniq > $LSB_JOBID.hosts		# catches both the batc
 NUM_NODES=$(cat $LSB_JOBID.hosts | wc -l)	# count number of lines in $LSB_JOBID.hosts
 export NUM_NODES=$(expr $NUM_NODES - 1)		# subtract by one to ignore the batch node
 
+echo "Using python: " `which python3`
+echo "PYTHONPATH: " $PYTHONPATH
+echo "scheduler file:" $SCHEDULER_FILE
+echo "NUM_NODES: $NUM_NODES"
+
 ##
 ## Start dask scheduler on an arbitrary couple of CPUs (more than one CPU to handle overhead of managing all the dask workers).
 ##
@@ -74,7 +79,7 @@ jsrun --smpiargs="off" --rs_per_host 6 --tasks_per_rs 1 --cpu_per_rs 1 --gpu_per
 	--stdio_stdout ${RUN_DIR}/dask_worker.stdout --stdio_stderr ${RUN_DIR}/dask_worker.stderr \
 	dask-worker --nthreads 1 --nprocs 1 --interface ib0 --no-dashboard --no-nanny --reconnect --scheduler-file ${SCHEDULER_FILE} &
 
-# --nrs $NUM_NODES 
+# --nrs $NUM_NODES
 
 echo Waiting for workers
 
@@ -90,4 +95,3 @@ jsrun --smpiargs="off" --nrs 1 --rs_per_host 1 --tasks_per_rs 1 --cpu_per_rs 1 -
 jskill all
 
 echo Run finished.
-
