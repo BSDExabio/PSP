@@ -44,6 +44,7 @@ import dask.config
 from distributed import Client, Worker, as_completed, get_worker
 
 import logging_functions
+from logging_functions import WorkerLoggerPlugin
 
 # NOTE: hard coded variables for the moment.
 RESTRAINT_SET = "non_hydrogen"  # or "c_alpha"
@@ -188,7 +189,7 @@ if __name__ == '__main__':
 
     # client.upload_file('logging_functions.py')
 
-    client.register_worker_plugin(logging_functions.WorkerLoggerPlugin())
+    client.register_worker_plugin(WorkerLoggerPlugin())
 
     main_logger.info(f'Installed worker plugin.')
 
