@@ -188,6 +188,8 @@ if __name__ == '__main__':
 
     client.register_worker_plugin(logging_functions.WorkerLoggerPlugin())
 
+    main_logger.info(f'Installed worker plugin.')
+
     # do the thing.
     task_futures = client.map(submit_pipeline,proteins,args.script_path,args.working_dir, restraint_set = RESTRAINT_SET, relax_exclude_residues = RELAX_EXCLUDE_RESIDUES, save_directory = DIRECTORY, pure=False)
 
