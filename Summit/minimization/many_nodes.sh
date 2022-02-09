@@ -38,6 +38,7 @@ unset __conda_setup
 conda activate openmm
 
 # set active directories
+SRC_DIR=/gpfs/alpine/csc396/proj-shared/mcoletti/PSP/Summit/minimization
 RUN_DIR=/gpfs/alpine/csc396/proj-shared/mcoletti/runs/minimizer/issue-19-mark
 SCHEDULER_FILE=${RUN_DIR}/scheduler_file.json
 PYTHONPATH=/gpfs/alpine/csc396/proj-shared/mcoletti/PSP/Summit/minimization:$PYTHONPATH
@@ -57,6 +58,7 @@ export NUM_NODES=$(expr $NUM_NODES - 1)		# subtract by one to ignore the batch n
 
 echo "Using python: " `which python3`
 echo "PYTHONPATH: " $PYTHONPATH
+echo "SRC_DIR: " $SRC_DIR
 echo "scheduler file:" $SCHEDULER_FILE
 echo "NUM_NODES: $NUM_NODES"
 
@@ -91,7 +93,7 @@ sleep 30
 # Run the client task manager; like the scheduler, this just needs a single core to noodle away on, which python takes naturally (no jsrun call needed)
 jsrun --smpiargs="off" --nrs 1 --rs_per_host 1 --tasks_per_rs 1 --cpu_per_rs 1 --gpu_per_rs 0 --latency_priority cpu-cpu \
 	--stdio_stdout ${RUN_DIR}/tskmgr.stdout --stdio_stderr ${RUN_DIR}/tskmgr.stderr \
-	python3 /gpfs/alpine/bip198/proj-shared/minimize_af/debug/dask_tskmgr.py --scheduler-file $SCHEDULER_FILE --input-file /gpfs/alpine/bip198/proj-shared/minimize_af/debug/casp14_unrelaxed_models.lst --timings-file ${RUN_DIR}/timings.csv --working-dir ${RUN_DIR} --script-path /gpfs/alpine/proj-shared/bip198/minimize_af/debug/minimization.py
+	python3 ${SRC_DIR}/dask_tskmgr.py --scheduler-file $SCHEDULER_FILE --input-file ${SRC_DIR}/structure_list.lst --timings-file ${RUN_DIR}/timings.csv --working-dir ${RUN_DIR} --script-path ${SRC_DIR}/minimization.py
 
 # We're done so kill the scheduler and worker processes
 jskill all
