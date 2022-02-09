@@ -186,6 +186,8 @@ if __name__ == '__main__':
     connected_workers = len(workers_info)
     main_logger.info(f'{connected_workers} workers connected. Log files created.')
 
+    client.upload_file('logging_functions.py')
+
     client.register_worker_plugin(logging_functions.WorkerLoggerPlugin())
 
     main_logger.info(f'Installed worker plugin.')
