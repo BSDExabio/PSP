@@ -21,14 +21,14 @@ module load cuda/10.2.89 gcc/8.1.1
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/ccs/home/davidsonrb/Apps/miniconda_SUMMIT/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+__conda_setup="$('/gpfs/alpine/csc396/proj-shared/mcoletti/runs/minimizer/issue-19-mark/miniconda/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
 if [ $? -eq 0 ]; then
     eval "$__conda_setup"
 else
     if [ -f "/ccs/home/davidsonrb/Apps/miniconda_SUMMIT/etc/profile.d/conda.sh" ]; then
         . "/ccs/home/davidsonrb/Apps/miniconda_SUMMIT/etc/profile.d/conda.sh"
     else
-        export PATH="/ccs/home/davidsonrb/Apps/miniconda_SUMMIT/bin:$PATH"
+        export PATH="/gpfs/alpine/csc396/proj-shared/mcoletti/runs/minimizer/issue-19-mark/miniconda/bin:$PATH"
     fi
 fi
 unset __conda_setup
