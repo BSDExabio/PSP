@@ -3,7 +3,7 @@
 
 First, install `miniconda`:
 ```bash
-module load cuda/10.2.89 gcc/8.1.1
+module load cuda/11.0.3 gcc/11.1.0
 wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-ppc64le.sh
 bash Miniconda3-latest-Linux-ppc64le.sh -b -p miniconda
 # Initialize your ~/.bash_profile
@@ -22,11 +22,11 @@ conda update --yes --all
 
 ```bash
 # Create a new environment named 'openmm'
-conda create -n openmm python==3.7
+conda create -n openmm python==3.9
 # Activate it
 conda activate openmm
-# Install the 'openmm' 7.4.0 dev package for ppc64le into this environment
-conda install --yes -c omnia-dev/label/cuda101 openmm
+# Install the 'openmm' 7.6.0 for ppc64le into this environment
+conda install --yes -c omnia-dev/label/cuda110 openmm
 conda install pdbfixer dask
 # start an interactive job on a single node of SUMMIT
 bsub -W 2:00 -nnodes 1 -P bip198 -alloc_flags gpudefault -Is /bin/bash
