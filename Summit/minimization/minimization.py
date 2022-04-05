@@ -157,6 +157,7 @@ if __name__ == '__main__':
     # make working directory.
     try:
         os.mkdir(path+f'{directory}/')
+        os.chmod(path+f'{directory}/', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
         path = path+f'{directory}/'
     except FileExistsError:
         path = path+f'{directory}/'

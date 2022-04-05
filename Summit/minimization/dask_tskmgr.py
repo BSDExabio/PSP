@@ -27,14 +27,14 @@
         DIRECTORY: name of the directory within which output for each task will be written
 """
 
+import sys
 import time
-import argparse
-import platform
 import os
 import stat
+import argparse
+import platform
 import traceback
 import numpy as np
-
 import csv
 
 import subprocess
@@ -103,27 +103,26 @@ def append_timings(csv_writer, file_object, hostname, worker_id, start_time, sto
     file_object.flush()
 
 
-def submit_pipeline(pdb_file,script,working_directory,restraint_set="non_hydrogen",relax_exclude_residues=[],save_directory=''):
+def submit_pipeline(pdb_file,script='',restraint_set="non_hydrogen",relax_exclude_residues=[],save_directory='',working_directory=''):
     """
     """
     worker = get_worker()
     start_time = time.time()
-    worker.logger.info(f'Starting to process {pdb_file} at {start_time}.')
 
     try:
-        completed_process = subprocess.run(['python3',script,pdb_file,restraint_set,save_directory],shell=False,capture_output=True,check=True,cwd=working_directory)
+        print(f'python3 {script} {pdb_file} {restraint_set} {save_directory}',flush=True)
+        completed_process = subprocess.run(f'python3 {script} {pdb_file} {restraint_set} {save_directory}',shell=True,capture_output=True,check=True,cwd=working_directory)
         final_pdb = completed_process.stdout.decode('utf-8').strip()
-        worker.logger.info(f'Finished minimization of {pdb_file}; saved to {final_pdb}.')
         return platform.node(), worker.id, start_time, time.time(), final_pdb
 
     except CalledProcessError as e:
-        worker.logger.error(f'Exception occurred. Return code {e.returncode}')
-        worker.logger.error(f'Exception cmd: {e.cmd}')
+        print(f'Exception occurred. Return code {e.returncode}',flush=True)
+        print(f'Exception cmd: {e.cmd}',flush=True)
         return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
 
     except Exception as e:
-        worker.logger.error(f'Odd exception {e} raised')
-        worker.logger.error(f'Exception cmd: {e.cmd}')
+        print(f'Odd exception {e} raised',flush=True)
+        print(f'Exception cmd: {e.cmd}',flush=True)
         return platform.node(), worker.id, start_time, time.time(), f'failed to minimize {pdb_file}'
 
 
@@ -184,10 +183,12 @@ if __name__ == '__main__':
     connected_workers = len(workers_info)
     main_logger.info(f'{connected_workers} workers connected. Log files created.')
 
-    client.register_worker_plugin(logging_functions.WorkerLoggerPlugin())
+    # point to the logging module file. there's gotta be a better way...
+    temp = args.script_path.split('/')[-1]
+    src_dir = args.script_path.split(temp)[0]
 
     # do the thing.
-    task_futures = client.map(submit_pipeline,proteins,args.script_path,args.working_dir, restraint_set = RESTRAINT_SET, relax_exclude_residues = RELAX_EXCLUDE_RESIDUES, save_directory = DIRECTORY, pure=False) 
+    task_futures = client.map(submit_pipeline,proteins, script = args.script_path, restraint_set = RESTRAINT_SET, relax_exclude_residues = RELAX_EXCLUDE_RESIDUES, save_directory = DIRECTORY, working_directory = args.working_dir, pure=False) 
 
     # gather results.
     ac = as_completed(task_futures)
