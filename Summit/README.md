@@ -1,6 +1,6 @@
 # PSP on Summit
 
-This repo contains code use to run proteom-scale structure prediction pipelines using AlphaFold (v.2.0.) on the OLCF Summit supercomputer at teh Oak Ridge National Laboratory.
+This repo contains code use to run proteome-scale structure prediction pipelines using AlphaFold (v.2.0.) on the OLCF Summit supercomputer at the Oak Ridge National Laboratory.
 
 We currently only run the DL portion of AlphaFold on Summit. Preprocesing (MSA generation, etc.) takes place on the Andes data analysis cluster.
 
