@@ -1,12 +1,12 @@
 # PSP on Summit
 
-THIS IS A WIP.
+This repo contains code use to run proteom-scale structure prediction pipelines using AlphaFold (v.2.0.) on the OLCF Summit supercomputer at teh Oak Ridge National Laboratory.
 
-This folder provides a way to get started on Summit. We currently only run the DL portion of AlphaFold on Summit. Preprocesing will likely take place on Andes.
+We currently only run the DL portion of AlphaFold on Summit. Preprocesing (MSA generation, etc.) takes place on the Andes data analysis cluster.
 
 ## The container
 
-We built the container on an ORNL Raptor machine, which is also Power9. The container build mechanism was Podman. We then converted it to a Singularity runtime file. 
+We built the container on an ORNL Raptor machine, which is also Power9. The container build mechanism was Podman. We then converted it to a Singularity runtime file. See the followning papers for details: https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=9835405, https://ieeexplore.ieee.org/abstract/document/9652872.
 
 The container file we run is: `alphafold1103.sif` (not exactly sure where to put the container yet, other than the Summit filesystem for sharing, it is too large to load into Github like a normal file).
 
@@ -14,7 +14,7 @@ It is built for CUDA11.
 
 ## The setup
 
-- `alphafold`: Contains alphafold codebase, in addtion to our own scripts.  
+- `alphafold`: Contains alphafold codebase, in addition to our own scripts.  
 - `alphafold_databases/params`: Contains parameters for the models. 
 - `casp14`: Contains casp14 list file and reduced database for testing (on GPFS at `/gpfs/alpine/world-shared/bif135/alphafold_onsummit/alphafold_test/casp14/af_reduced_db/`).
 - `desulfovibrio:` A larger set of 559 sequences in the list file (on GPFS at `/gpfs/alpine/world-shared/bif135/desulfovibrio/afold_fea/`).
