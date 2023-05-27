@@ -6,7 +6,7 @@ We currently only run the DL portion of AlphaFold on Summit. Preprocesing (MSA g
 
 ## The container
 
-We built the container on an ORNL Raptor machine, which is also Power9. The container build mechanism was Podman. We then converted it to a Singularity runtime file. See the followning papers for details: https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=9835405, https://ieeexplore.ieee.org/abstract/document/9652872.
+We built the container on an ORNL Raptor machine, which is also Power9. The container build mechanism was Podman. We then converted it to a Singularity runtime file. See the following papers for details: https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=9835405, https://ieeexplore.ieee.org/abstract/document/9652872.
 
 The container file we run is: `alphafold1103.sif` (not exactly sure where to put the container yet, other than the Summit filesystem for sharing, it is too large to load into Github like a normal file).
 
